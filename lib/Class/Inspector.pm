@@ -12,14 +12,12 @@ package Class::Inspector;
 # We don't want to use strict refs, since we do a lot of things in here
 # that arn't strict refs friendly.
 use strict 'vars', 'subs';
-
-use Class::ISA;
 use File::Spec ();
 
 # Globals
 use vars qw{$VERSION $RE_SYMBOL $RE_CLASS $UNIX};
 BEGIN {
-	$VERSION = 1.04;
+	$VERSION = 1.05;
 
 	# Predefine some regexs
 	$RE_SYMBOL  = qr/\A[^\W\d]\w*\z/;
@@ -185,7 +183,17 @@ sub methods {
 	return undef unless $class->loaded( $name );
 
 	# Get the super path ( not including UNIVERSAL )
-	my @path = Class::ISA::self_and_super_path( $name );
+	# Rather than using Class::ISA, we'll use an inlined version
+	# that implements the same basic algorithm.
+	my @path  = ();
+	my @queue = ( $name );
+	my %seen  = ( $name => 1 );
+	while ( my $cl = shift @queue ) {
+		push @path, $cl;
+		unshift @queue, grep { ! $seen{$_}++ }
+			map { s/^::/main::/; s/\'/::/g; $_ }
+			( @{"${cl}::ISA"} );
+	}
 
 	# Find and merge the function names across the entire super path.
 	# Sort alphabetically and return.
@@ -203,7 +211,7 @@ sub methods {
 	# Filter to public or private methods if needed
 	my @methodlist = sort keys %methods;
 	@methodlist = grep { ! /^\_/ } @methodlist if $options{public};
-	@methodlist = grep { /^\_/ } @methodlist if $options{private};
+	@methodlist = grep { /^\_/ }   @methodlist if $options{private};
 
 	# Return in the correct format
 	@methodlist = map { "$methods{$_}::$_" } @methodlist if $options{full};
@@ -288,7 +296,7 @@ sub _inc_to_local {
 	my $class = shift;
 
 	# Shortcut in the Unix case
-	return $_[0] if $File::Spec::ISA[0] eq 'File::Spec::Unix';
+	return $_[0] if $UNIX;
 
 	# Get the INC filename and convert
 	my $inc_name = shift or return undef;
@@ -449,9 +457,9 @@ The response from C<methods( 'Class', 'expanded' )> would look something like
 the following.
 
   [
-    [ 'Class::method1', 'Class', 'method1', \&Class::method1 ],
+    [ 'Class::method1',   'Class',   'method1', \&Class::method1   ],
     [ 'Another::method2', 'Another', 'method2', \&Another::method2 ],
-    [ 'Foo::bar', 'Foo', 'bar', \&Foo::bar ],
+    [ 'Foo::bar',         'Foo',     'bar',     \&Foo::bar         ],
   ]
 
 =back
@@ -480,7 +488,7 @@ L<Class::Handle>, which wraps this one
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002 Adam Kennedy. All rights reserved.
+Copyright (c) 2002 - 2004 Adam Kennedy. All rights reserved.
 This program is free software; you can redistribute
 it and/or modify it under the same terms as Perl itself.
 

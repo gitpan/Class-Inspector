@@ -1,7 +1,11 @@
 Revision history for Perl extension Class::Inspector.
 
+1.05 Mon Jul 19 2004
+	- Inlined a better version of self_and_super_class
+	- Removed Class::ISA as a dependency
+
 1.04 Tue Mar 23 2004
-	- Apparently on Windows @INC/%INC use Unix style backslashes
+	- Apparently on Windows @INC/%INC uses Unix style backslashes
 	  Updated to handle this fact.
 
 1.03 Sun Dec 14 2003
