@@ -14,15 +14,12 @@ package Class::Inspector;
 use strict qw{vars subs};
 
 use Class::ISA;
+use File::Spec;
 
 # Declare globals
-use vars qw{$SEP $VERSION};
+use vars qw{$VERSION};
 BEGIN {
-	$VERSION = 0.2;
-	
-	# Use our own filename to determine the path seperator.
-	# Our file will be "something" . $SEP . "Class.pm".
-	$SEP = substr __FILE__, -13, 1;
+	$VERSION = 1.0;
 }
 
 
@@ -68,8 +65,7 @@ sub filename {
 	my $name = $class->_checkClass( shift ) or return undef;
 	
 	# Do the conversion
-	$name =~ s/(?:'|::)/$SEP/g;
-	return $name . '.pm';
+	return File::Spec->catfile( split /(?:'|::)/, $name ) . '.pm';
 }
 
 # Resolve the full filename for the class.
@@ -83,7 +79,8 @@ sub resolved_filename {
 	
 	# Look through the @INC path to find the file
 	foreach ( @try_first, @INC ) {
-		return "$_$SEP$filename" if -e "$_$SEP$filename";
+		my $full = File::Spec->catfile( $_, $filename );
+		return $full if -e $full;
 	}
 	
 	# File not found

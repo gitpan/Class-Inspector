@@ -1,14 +1,14 @@
-#!/usr/local/bin/perl
+#!/usr/bin/perl
 
 # Formal testing for Class::Inspector
 
 # Do all the tests on ourself, since we know we will be loaded.
 
 use strict;
-use lib '../../modules';
-use lib '../lib'; # For installation testing
+use lib '../../../modules'; # Development testing
+use lib '../lib';           # Installation testing
 use UNIVERSAL 'isa';
-use Test::Simple tests => 49;
+use Test::Simple tests => 47;
 
 # Set up any needed globals
 use vars qw{$loaded $ci $bad};
@@ -45,11 +45,6 @@ ok( 1, 'Loads' );
 
 
 
-# Check the seperator
-my $SEP = $Class::Inspector::SEP;
-ok( $SEP, "Seperator defined" );
-ok( ($SEP eq '/' or $SEP eq '\\' or $SEP eq ':'), "Seperator appears valid ('$SEP')" );
-
 
 
 
@@ -79,7 +74,7 @@ ok( ! $ci->loaded( $bad ), "->loaded detects not loaded" );
 
 # Check the file name methods
 my $filename = $ci->filename( $ci );
-ok( $filename eq "Class$SEP\Inspector.pm", "->filename works correctly" );
+ok( $filename eq File::Spec->catfile( "Class", "Inspector.pm" ), "->filename works correctly" );
 ok( $INC{$filename} eq $ci->loaded_filename( $ci ),
 	"->loaded_filename works" );
 ok( $INC{$filename} eq $ci->resolved_filename( $ci ),

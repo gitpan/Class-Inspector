@@ -1,5 +1,8 @@
 Revision history for Perl extension Class::Inspector.
 
+1.0  Sat Dec 21 13:31:21 2002
+	- Converted to use File::Spec
+
 0.2  Tue May 28 18:47:00 2002
 	- Added options for ->methods
 
