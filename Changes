@@ -1,5 +1,8 @@
 Revision history for Perl extension Class::Inspector.
 
+1.06 Wed Jul 21 2004
+	- Fixed a major Win32 bug
+
 1.05 Mon Jul 19 2004
 	- Inlined a better version of self_and_super_class
 	- Removed Class::ISA as a dependency

@@ -17,7 +17,7 @@ use File::Spec ();
 # Globals
 use vars qw{$VERSION $RE_SYMBOL $RE_CLASS $UNIX};
 BEGIN {
-	$VERSION = 1.05;
+	$VERSION = '1.06';
 
 	# Predefine some regexs
 	$RE_SYMBOL  = qr/\A[^\W\d]\w*\z/;
@@ -300,9 +300,9 @@ sub _inc_to_local {
 
 	# Get the INC filename and convert
 	my $inc_name = shift or return undef;
-	my ($vol, $dir, $file) = File::Spec->catdir;
-	$dir = File::Spec->catdir( File::Spec->splitdir( $dir ) );
-	File::Spec->catpath( $vol, $dir, $file );
+	my ($vol, $dir, $file) = File::Spec::Unix->splitpath( $inc_name );
+	$dir = File::Spec->catdir( File::Spec::Unix->splitdir( $dir || "" ) );
+	File::Spec->catpath( $vol, $dir, $file || "" );
 }
 
 1;
