@@ -1,5 +1,8 @@
 Revision history for Perl extension Class::Inspector.
 
+1.03 Sun Dec 14 2003
+	- Fixed an infinite loop bug in recursive_children
+
 1.02 Sun Dec 14 2003
 	- recursive children ignores ::ISA::CACHE::
 	- Minor code tweaks

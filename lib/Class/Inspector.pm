@@ -19,7 +19,7 @@ use File::Spec ();
 # Globals
 use vars qw{$VERSION $RE_SYMBOL $RE_CLASS};
 BEGIN {
-	$VERSION = 1.02;
+	$VERSION = 1.03;
 
 	# Precompile some regexs
 	$RE_SYMBOL  = qr/\A[^\W\d]\w*\z/;
@@ -239,7 +239,7 @@ sub recursive_children {
 	my $i = 0;
 	no strict 'refs';
 	while ( my $namespace = $children[$i++] ) {
-		push @children, map { "${name}::$_" }
+		push @children, map { "${namespace}::$_" }
 			grep { ! /^::/ } # Ignore things like ::ISA::CACHE::
 			grep { s/::$// }
 			keys %{"${namespace}::"};
