@@ -1,5 +1,8 @@
 Revision history for Perl extension Class::Inspector.
 
+1.08 Tue Feb 15 2005
+	- Removing braindead Build.PL
+
 1.07 Thu Nov 18 2004
 	- Improved the speed (slightly, and only in positive cases) and accuracy of ->loaded.
 	- It now checks for some additional clues before returning false.

@@ -19,7 +19,7 @@ use File::Spec ();
 # Globals
 use vars qw{$VERSION $RE_SYMBOL $RE_CLASS $UNIX};
 BEGIN {
-	$VERSION = '1.07';
+	$VERSION = '1.08';
 
 	# Predefine some regexs
 	$RE_SYMBOL  = qr/\A[^\W\d]\w*\z/;
@@ -486,7 +486,7 @@ Bugs should be reported via the CPAN bug tracker
 
 L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Class%3A%3AInspector>
 
-For other issues, contact the author
+For other issues, or commercial enhancement or support, contact the author.
 
 =head1 AUTHOR
 
