@@ -1,5 +1,10 @@
 Revision history for Perl extension Class::Inspector.
 
+1.01 Mon Nov 10 2003
+	- Symbol table entries due to overloads and anonymous subs
+	  are filtered from the results correctly.
+	- Did a large amount of code cleaning and optomising
+
 1.0  Sat Dec 21 13:31:21 2002
 	- Converted to use File::Spec
 

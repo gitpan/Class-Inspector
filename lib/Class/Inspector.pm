@@ -14,12 +14,16 @@ package Class::Inspector;
 use strict qw{vars subs};
 
 use Class::ISA;
-use File::Spec;
+use File::Spec ();
 
 # Declare globals
-use vars qw{$VERSION};
+use vars qw{$VERSION $RE_SYMBOL $RE_CLASS};
 BEGIN {
-	$VERSION = 1.0;
+	$VERSION = 1.01;
+
+	# Precompile some regexs
+	$RE_SYMBOL  = qr/\A[^\W\d]\w*\z/;
+	$RE_CLASS   = qr/\A[^\W\d]\w*(?:(?:'|::)[^\W\d]\w*)*\z/;
 }
 
 
@@ -33,10 +37,9 @@ BEGIN {
 # to Perl. This is basically just a wrapper around C<resolved_filename>.
 sub installed {
 	my $class = shift;
-	
+
 	# Can we find a resolved filename
-	my $rv = $class->resolved_filename( shift );
-	return $rv ? 1 : $rv;
+	$class->resolved_filename( shift ) and 1;
 }
 
 # Is the class loaded.
@@ -44,62 +47,49 @@ sub installed {
 # means any symbols other than child symbol table branches.
 sub loaded {
 	my $class = shift;
-	my $name = $class->_checkClass( shift ) or return undef;
-	
+	my $name = $class->_class( shift ) or return undef;
+
 	# Are there any symbol table entries other than other namespaces
-	foreach ( keys %{"$name\::"} ) {
-		unless ( substr($_, -2, 2) eq '::' ) {
-			# Found something, it's loaded
-			return 1;
-		}
+	foreach ( keys %{"${name}::"} ) {
+		return 1 unless substr($_, -2, 2) eq '::';
 	}
-	
-	# Didn't find anything, not loaded
-	return '';
+
+	'';
 }
 
 # Convert to a filename, in the style of
 # First::Second -> First/Second.pm
 sub filename {
 	my $class = shift;
-	my $name = $class->_checkClass( shift ) or return undef;
-	
-	# Do the conversion
-	return File::Spec->catfile( split /(?:'|::)/, $name ) . '.pm';
+	my $name = $class->_class( shift ) or return undef;
+	File::Spec->catfile( split /(?:'|::)/, $name ) . '.pm';
 }
 
 # Resolve the full filename for the class.
 sub resolved_filename {
 	my $class = shift;
-	my $name = $class->_checkClass( shift ) or return undef;
-	my @try_first = @_;
-	
-	# Get the base filename
-	my $filename = $class->filename( $name );
-	
+	my $filename = $class->filename( shift ) or return undef;
+
 	# Look through the @INC path to find the file
+	my @try_first = @_;
 	foreach ( @try_first, @INC ) {
 		my $full = File::Spec->catfile( $_, $filename );
 		return $full if -e $full;
 	}
-	
+
 	# File not found
-	return '';
+	'';
 }
 
 # Get the loaded filename for the class.
+# Look the base filename up in %INC.
 sub loaded_filename {
 	my $class = shift;
-	my $name = $class->_checkClass( shift ) or return undef;
-	
-	# Get the base filename
-	my $filename = $class->filename( $name );
-	
-	# Look the base fielname up in %INC
-	return $INC{$filename};
+	my $filename = $class->filename( shift ) or return undef;
+	$INC{ $filename };
 }
 
-	
+
 
 
 
@@ -108,78 +98,78 @@ sub loaded_filename {
 
 # Get a reference to a list of function names for a class.
 # Note: functions NOT methods.
+# Only works if the class is loaded
 sub functions {
 	my $class = shift;
-	my $name = $class->_checkClass( shift ) or return undef;
-
-	# Only works if the class is loaded
+	my $name = $class->_class(shift) or return undef;
 	return undef unless $class->loaded( $name );
 
 	# Get all the CODE symbol table entries
-	return [ 
-		grep { defined &{"$name\::$_"} } 
-		sort keys %{"$name\::"} 
-		];
+	my @functions = sort grep { /$RE_SYMBOL/o }
+		grep { defined &{"${name}::$_"} }
+		keys %{"${name}::"};
+	\@functions;
 }
 
 # As above, but returns a ref to an array of the actual 
-# CODE refs of the functionsb
+# CODE refs of the functions.
+# The class must be loaded for this to work.
 sub function_refs {
 	my $class = shift;
-	my $name = $class->_checkClass( shift ) or return undef;
-
-	# Only works if the class is loaded
+	my $name = $class->_class(shift) or return undef;
 	return undef unless $class->loaded( $name );
 
-	# Get all the CODE symbol table entries,
-	# but this time return them as CODE refs
-	return [ 
-		map { \&{"$name\::$_"} }
-		grep { defined &{"$name\::$_"} }
-		sort keys %{"$name\::"} 
-		];
+	# Get all the CODE symbol table entries, but return
+	# the actual CODE refs this time.
+	my @functions = map { \&{"${name}::$_"} }
+		sort grep { /$RE_SYMBOL/o }
+		grep { defined &{"${name}::$_"} }
+		keys %{"${name}::"};
+	\@functions;
 }
 
 # Does a particular function exist
 sub function_exists {
 	my $class = shift;
-	my $name = $class->_checkClass( shift ) or return undef;
+	my $name = $class->_class( shift ) or return undef;
 	my $function = shift or return undef;
 
 	# Only works if the class is loaded
 	return undef unless $class->loaded( $name );
 
 	# Does the GLOB exist and it's CODE part exist
-	return defined &{"$name\::$function"};
+	defined &{"${name}::$function"};
 }
 
 # Get all the available methods for the class
 sub methods {
 	my $class = shift;
-	my $name = $class->_checkClass( shift ) or return undef;
+	my $name = $class->_class( shift ) or return undef;
 	my @arguments = map { lc $_ } @_;
-	
-	# Define the options hash
+
+	# Process the arguments to determine the options
 	my %options = ();
-	
-	# Process the arguments to define the options
 	foreach ( @arguments ) {
 		if ( $_ eq 'public' ) {
 			# Only get public methods
 			return undef if $options{private};
-			$options{public} = 1;			
+			$options{public} = 1;
+
 		} elsif ( $_ eq 'private' ) {
 			# Only get private methods
 			return undef if $options{public};
 			$options{private} = 1;
+
 		} elsif ( $_ eq 'full' ) {
 			# Return the full method name
 			return undef if $options{expanded};
 			$options{full} = 1;
+
 		} elsif ( $_ eq 'expanded' ) {
 			# Returns class, method and function ref
 			return undef if $options{full};
 			$options{expanded} = 1;
+
 		} else {
 			# Unknown or unsupported options
 			return undef;
@@ -191,30 +181,71 @@ sub methods {
 
 	# Get the super path ( not including UNIVERSAL )
 	my @path = Class::ISA::self_and_super_path( $name );
-	
-	# Build a merge the method names across the entire super path.
-	# Sort alphabetically and return.	
+
+	# Find and merge the function names across the entire super path.
+	# Sort alphabetically and return.
 	my %methods = ();
 	foreach my $namespace ( @path ) {
-		foreach ( grep { defined &{"$namespace\::$_"} } 
-		keys %{"$namespace\::"} ) {
-			next if $methods{$_};
+		my @functions = grep { ! $methods{$_} }
+			grep { /$RE_SYMBOL/o }
+			grep { defined &{"${namespace}::$_"} } 
+			keys %{"${namespace}::"};
+		foreach ( @functions ) {
 			$methods{$_} = $namespace;
 		}
 	}
-	
+
 	# Filter to public or private methods if needed
 	my @methodlist = sort keys %methods;
 	@methodlist = grep { ! /^\_/ } @methodlist if $options{public};
 	@methodlist = grep { /^\_/ } @methodlist if $options{private};
 
 	# Return in the correct format
-	@methodlist = map { "$methods{$_}\::$_" } @methodlist if $options{full};
+	@methodlist = map { "$methods{$_}::$_" } @methodlist if $options{full};
 	@methodlist = map { 
-		[ "$methods{$_}\::$_", $methods{$_}, $_, \&{"$methods{$_}\::$_"} ] 
+		[ "$methods{$_}::$_", $methods{$_}, $_, \&{"$methods{$_}::$_"} ] 
 		} @methodlist if $options{expanded};
-	
-	return \@methodlist;
+
+	\@methodlist;
+}
+
+
+
+
+
+#####################################################################
+# Children Related Methods
+
+# These can go undocumented for now, until I decide if it's best to
+# just search the children in namespace only, or if I should do it via
+# the file system.
+
+# Find all the loaded classes below us
+sub children {
+	my $class = shift;
+	my $name = $class->_class(shift) or return ();
+
+	# Find all the Foo:: elements in our symbol table
+	no strict 'refs';
+	map { "${name}::$_" } sort grep { s/::$// } keys %{"${name}::"};
+}
+
+# As above, but recursively
+sub recursive_children {
+	my $class = shift;
+	my $name = $class->_class(shift) or return ();
+	my @children = ( $name );
+
+	# Do the search using a nicer, more memory efficient
+	# variant of actual recursion.
+	{ no strict 'refs';
+		my $i = 0;
+		while ( my $namespace = $children[$i++] ) {
+			push @children, map { "${name}::$_" } grep { s/::$// } keys %{"${namespace}::"};
+		}
+	}
+
+	sort @children;
 }
 
 
@@ -224,15 +255,17 @@ sub methods {
 #####################################################################
 # Private Methods
 
-sub _checkClass {
+# Checks and expands ( if needed ) a class name
+sub _class {
 	my $class = shift;
 	my $name = shift or return '';
 
 	# Handle main shorthand
 	return 'main' if $name eq '::';
-	$name =~ s/^::/main::/;
+	$name =~ s/\A::/main::/;
 
-	return $name =~ /^[a-z]\w*((?:'|::)\w+)*$/io ? $name : '';
+	# Check the class name
+	$name =~ /$RE_CLASS/o ? $name : '';
 }
 
 1;
@@ -268,28 +301,28 @@ Class::Inspector - Provides information about Classes
 Class::Inspector allows you to get information about a loaded class. Most or
 all of this information can be found in other ways, but they arn't always
 very friendly, and usually involve a relatively high level of Perl wizardry,
-or strange or unusual looking code. Class::Inspector attempts to provide 
+or strange and unusual looking code. Class::Inspector attempts to provide 
 an easier, more friendly interface to this information.
 
 =head1 METHODS
 
-=head2 installed( $class )
+=head2 installed $class
 
-Tries to determine is a class is installed on the machine, or at least 
+Tries to determine if a class is installed on the machine, or at least 
 available to Perl. It does this by essentially wrapping around 
 C<resolved_filename>. Returns true if installed/available, returns 0 if
 the class is not installed. Returns undef if the class name is invalid.
 
-=head2 loaded( $class )
+=head2 loaded $class
 
-Tries to determine if a class is loaded by looking for symbol table entries. 
-This method will work even if the class does not have it's own file, but is 
-contained inside a single module with multiple package/classes. Even in the 
-case of some sort of run-time loading class being used, these typically 
-leave some trace in the symbol table, so an C<Class::Autouse> or C<Autoload> 
+Tries to determine if a class is loaded by looking for symbol table entries.
+This method will work even if the class does not have it's own file, but is
+contained inside a single file with multiple classes in it. Even in the
+case of some sort of run-time loading class being used, these typically
+leave some trace in the symbol table, so an C<Autoload> or C<Class::Autouse>
 based class should correctly appear loaded.
 
-=head2 filename( $class )
+=head2 filename $class
 
 For a given class, returns the base filename for the class. This will NOT be
 a fully resolved filename, just the part of the filename BELOW the @INC entry.
@@ -300,7 +333,7 @@ This filename will be returned for the current platform. It should work on all
 platforms. Returns the filename on success. Returns undef on error, which could
 only really be caused by an invalid class name.
 
-=head2 resolved_filename( $class, @try_first )
+=head2 resolved_filename $class, @try_first
 
 For a given class, returns the fully resolved filename for a class. That is, the
 file that the class would be loaded from. This is not nescesarily the file that
@@ -309,26 +342,26 @@ and the @INC include path may change. To get the actual file for a loaded class,
 see the C<loaded_filename> method. Returns the filename for the class on success. 
 Returns undef on error.
 
-=head2 loaded_filename( $class )
+=head2 loaded_filename $class
 
 For a given, loaded, class, returns the name of the file that it was originally
 loaded from. Returns false if the class is not loaded, or did not have it's own
 file.
 
-=head2 functions( $class )
+=head2 functions $class
 
 Returns a list of the names of all the functions in the classes immediate
 namespace. Note that this is not the METHODS of the class, just the functions.
 Returns a reference to an array of the function names on success. Returns undef
 on error or if the class is not loaded.
 
-=head2 function_refs( $class )
+=head2 function_refs $class
 
 Returns a list of references to all the functions in the classes immediate
 namespace. Returns a reference to an array of CODE refs of the functions on
 success. Returns undef on error or if the class is not loaded.
 
-=head2 function_exists( $class, $function )
+=head2 function_exists $class, $function
 
 Given a class and function the C<function_exists> method will check to see
 if the function exists in the class. Note that this is as a function, not
@@ -337,7 +370,7 @@ in UNIVERSAL, and hence to every other class. Returns 1 if the function
 exists. Returns 0 if the function does not exist. Returns undef on error,
 or if the class is not loaded.
 
-=head2 methods( $class, @options )
+=head2 methods $class, @options
 
 For a given class name, the C<methods> method will returns ALL the methods
 available to that class. This includes all methods available from every
@@ -379,7 +412,7 @@ returned. Instead of just the method name, you will instead get an array
 reference containing the method name as a single combined name, ala C<full>,
 the seperate class and method, and a CODE ref to the actual function ( if
 available ). Please note that the function reference is not guarenteed to 
-be available. c<Class::Inspector> is intended at some later time, work 
+be available. C<Class::Inspector> is intended at some later time, work 
 with modules that have some some of common run-time loader in place ( e.g
 C<Autoloader> or C<Class::Autouse> for example.
 
@@ -400,7 +433,11 @@ No known bugs, but I'm taking suggestions for additional functionality.
 
 =head1 SUPPORT
 
-Contact the author
+Bugs should be reported via the CPAN bug tracker
+
+http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Class%3A%3AInspector
+
+For other issues, contact the author
 
 =head1 AUTHOR
 
@@ -410,7 +447,7 @@ Contact the author
 
 =head1 SEE ALSO
 
-Class::Handle, which wraps this one
+L<Class::Handle>, which wraps this one
 
 =head1 COPYRIGHT
 

@@ -22,27 +22,26 @@ DESCRIPTION
     Class::Inspector allows you to get information about a loaded class.
     Most or all of this information can be found in other ways, but they
     arn't always very friendly, and usually involve a relatively high level
-    of Perl wizardry, or strange or unusual looking code. Class::Inspector
+    of Perl wizardry, or strange and unusual looking code. Class::Inspector
     attempts to provide an easier, more friendly interface to this
     information.
 
 METHODS
-  installed( $class )
-    Tries to determine is a class is installed on the machine, or at least
+  installed $class
+    Tries to determine if a class is installed on the machine, or at least
     available to Perl. It does this by essentially wrapping around
     "resolved_filename". Returns true if installed/available, returns 0 if
     the class is not installed. Returns undef if the class name is invalid.
 
-  loaded( $class )
+  loaded $class
     Tries to determine if a class is loaded by looking for symbol table
     entries. This method will work even if the class does not have it's own
-    file, but is contained inside a single module with multiple
-    package/classes. Even in the case of some sort of run-time loading class
-    being used, these typically leave some trace in the symbol table, so an
-    "Class::Autouse" or "Autoload" based class should correctly appear
-    loaded.
+    file, but is contained inside a single file with multiple classes in it.
+    Even in the case of some sort of run-time loading class being used,
+    these typically leave some trace in the symbol table, so an "Autoload"
+    or "Class::Autouse" based class should correctly appear loaded.
 
-  filename( $class )
+  filename $class
     For a given class, returns the base filename for the class. This will
     NOT be a fully resolved filename, just the part of the filename BELOW
     the @INC entry.
@@ -53,7 +52,7 @@ METHODS
     on all platforms. Returns the filename on success. Returns undef on
     error, which could only really be caused by an invalid class name.
 
-  resolved_filename( $class, @try_first )
+  resolved_filename $class, @try_first
     For a given class, returns the fully resolved filename for a class. That
     is, the file that the class would be loaded from. This is not
     nescesarily the file that the class WAS loaded from, as the value
@@ -62,24 +61,24 @@ METHODS
     "loaded_filename" method. Returns the filename for the class on success.
     Returns undef on error.
 
-  loaded_filename( $class )
+  loaded_filename $class
     For a given, loaded, class, returns the name of the file that it was
     originally loaded from. Returns false if the class is not loaded, or did
     not have it's own file.
 
-  functions( $class )
+  functions $class
     Returns a list of the names of all the functions in the classes
     immediate namespace. Note that this is not the METHODS of the class,
     just the functions. Returns a reference to an array of the function
     names on success. Returns undef on error or if the class is not loaded.
 
-  function_refs( $class )
+  function_refs $class
     Returns a list of references to all the functions in the classes
     immediate namespace. Returns a reference to an array of CODE refs of the
     functions on success. Returns undef on error or if the class is not
     loaded.
 
-  function_exists( $class, $function )
+  function_exists $class, $function
     Given a class and function the "function_exists" method will check to
     see if the function exists in the class. Note that this is as a
     function, not as a method. To see if a method exists for a class, use
@@ -87,7 +86,7 @@ METHODS
     if the function exists. Returns 0 if the function does not exist.
     Returns undef on error, or if the class is not loaded.
 
-  methods( $class, @options )
+  methods $class, @options
     For a given class name, the "methods" method will returns ALL the
     methods available to that class. This includes all methods available
     from every class up the class' @ISA tree. Returns a reference to an
@@ -125,8 +124,8 @@ METHODS
         combined name, ala "full", the seperate class and method, and a CODE
         ref to the actual function ( if available ). Please note that the
         function reference is not guarenteed to be available.
-        c<Class::Inspector> is intended at some later time, work with
-        modules that have some some of common run-time loader in place ( e.g
+        "Class::Inspector" is intended at some later time, work with modules
+        that have some some of common run-time loader in place ( e.g
         "Autoloader" or "Class::Autouse" for example.
 
         The response from "methods( 'Class', 'expanded' )" would look
@@ -142,7 +141,11 @@ BUGS
     No known bugs, but I'm taking suggestions for additional functionality.
 
 SUPPORT
-    Contact the author
+    Bugs should be reported via the CPAN bug tracker
+
+    http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Class%3A%3AInspector
+
+    For other issues, contact the author
 
 AUTHOR
             Adam Kennedy

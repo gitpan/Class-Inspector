@@ -1,7 +1,8 @@
 Changes
-LICENSE
-MANIFEST
-Makefile.PL
-README
 lib/Class/Inspector.pm
+LICENSE
+Makefile.PL
+MANIFEST			This list of files
+README
 t/01_main.t
+META.yml                                Module meta-data (added by MakeMaker)
