@@ -5,10 +5,19 @@
 # Do all the tests on ourself, since we know we will be loaded.
 
 use strict;
-use lib '../../modules'; # Development testing
-use lib '../lib';           # Installation testing
+use lib ();
 use UNIVERSAL 'isa';
-use Test::More tests => 50;
+use File::Spec::Functions ':ALL';
+BEGIN {
+	$| = 1;
+	unless ( $ENV{HARNESS_ACTIVE} ) {
+		require FindBin;
+		chdir ($FindBin::Bin = $FindBin::Bin); # Avoid a warning
+		lib->import( catdir( updir(), updir(), 'modules') );
+	}
+}
+
+use Test::More tests => 51;
 
 # Set up any needed globals
 use vars qw{$loaded $ci $bad $base_functions $base_public};
@@ -259,4 +268,18 @@ ok( (isa( $methods, 'ARRAY' )
 	"Public + Expanded ->methods works for inheriting class" );
 ok( ! $ci->methods( $bad ), "Expanded ->methods fails correctly" );
 
-# Done
+
+
+
+
+#####################################################################
+# Regression Tests
+
+# Discovered in 1.06, fixed in 1.07
+# In some cases, spurious empty GLOB entries can be created in a package.
+# These contain no actual symbols, but were causing ->loaded to return true.
+# An empty namespace with a single spurious empty glob entry (although
+# created in this test with a scalar) should return FALSE for ->loaded
+$Class::Inspector::SpuriousPackage::something = 1;
+ok( ! Class::Inspector->loaded('Class::Inspector::SpuriousPackage'),
+	'->loaded returns false for spurious glob in package' );

@@ -1,5 +1,9 @@
 Revision history for Perl extension Class::Inspector.
 
+1.07 Thu Nov 18 2004
+	- Improved the speed (slightly, and only in positive cases) and accuracy of ->loaded.
+	- It now checks for some additional clues before returning false.
+
 1.06 Wed Jul 21 2004
 	- Fixed a major Win32 bug
 

@@ -9,6 +9,8 @@ package Class::Inspector;
 # Almost everything in here can be done in other ways, but a lot
 # involve playing with special varables, symbol table, and the like.
 
+# Load Overhead: 236k
+
 # We don't want to use strict refs, since we do a lot of things in here
 # that arn't strict refs friendly.
 use strict 'vars', 'subs';
@@ -17,7 +19,7 @@ use File::Spec ();
 # Globals
 use vars qw{$VERSION $RE_SYMBOL $RE_CLASS $UNIX};
 BEGIN {
-	$VERSION = '1.06';
+	$VERSION = '1.07';
 
 	# Predefine some regexs
 	$RE_SYMBOL  = qr/\A[^\W\d]\w*\z/;
@@ -45,16 +47,26 @@ sub installed {
 
 # Is the class loaded.
 # We do this by seeing if the namespace is "occupied", which basically
-# means either we can find $VERSION, or any symbols other than child
-# symbol table branches exist.
+# means either we can find $VERSION or @ISA, or at least one subroutine.
 sub loaded {
 	my $class = shift;
 	my $name = $class->_class(shift) or return undef;
 
+	# Handle by far the two most common cases
+	# This is very fast and handles 99% of cases.
+	return 1 if defined ${"${name}::VERSION"};
+	return 1 if defined @{"${name}::ISA"};
+
 	# Are there any symbol table entries other than other namespaces
 	foreach ( keys %{"${name}::"} ) {
-		return 1 unless substr($_, -2, 2) eq '::';
+		next if substr($_, -2, 2) eq '::';
+		return 1 if defined &{"${name}::$_"};
 	}
+
+	# No functions, and it doesn't have a version, and isn't anything.
+	# As an absolute last resort, check for an entry in %INC
+	my $filename = $class->_inc_filename($name);
+	return 1 if defined $INC{$filename};
 
 	'';
 }
@@ -104,7 +116,7 @@ sub loaded_filename {
 # Only works if the class is loaded
 sub functions {
 	my $class = shift;
-	my $name = $class->_class(shift) or return undef;
+	my $name  = $class->_class(shift) or return undef;
 	return undef unless $class->loaded( $name );
 
 	# Get all the CODE symbol table entries
@@ -119,7 +131,7 @@ sub functions {
 # The class must be loaded for this to work.
 sub function_refs {
 	my $class = shift;
-	my $name = $class->_class(shift) or return undef;
+	my $name  = $class->_class(shift) or return undef;
 	return undef unless $class->loaded( $name );
 
 	# Get all the CODE symbol table entries, but return
@@ -133,21 +145,21 @@ sub function_refs {
 
 # Does a particular function exist
 sub function_exists {
-	my $class = shift;
-	my $name = $class->_class( shift ) or return undef;
+	my $class    = shift;
+	my $name     = $class->_class( shift ) or return undef;
 	my $function = shift or return undef;
 
 	# Only works if the class is loaded
 	return undef unless $class->loaded( $name );
 
-	# Does the GLOB exist and it's CODE part exist
+	# Does the GLOB exist and its CODE part exist
 	defined &{"${name}::$function"};
 }
 
 # Get all the available methods for the class
 sub methods {
-	my $class = shift;
-	my $name = $class->_class( shift ) or return undef;
+	my $class     = shift;
+	my $name      = $class->_class( shift ) or return undef;
 	my @arguments = map { lc $_ } @_;
 
 	# Process the arguments to determine the options
@@ -229,14 +241,14 @@ sub methods {
 #####################################################################
 # Children Related Methods
 
-# These can go undocumented for now, until I decide if it's best to
+# These can go undocumented for now, until I decide if its best to
 # just search the children in namespace only, or if I should do it via
 # the file system.
 
 # Find all the loaded classes below us
 sub children {
 	my $class = shift;
-	my $name = $class->_class(shift) or return ();
+	my $name  = $class->_class(shift) or return ();
 
 	# Find all the Foo:: elements in our symbol table
 	no strict 'refs';
@@ -245,8 +257,8 @@ sub children {
 
 # As above, but recursively
 sub recursive_children {
-	my $class = shift;
-	my $name = $class->_class(shift) or return ();
+	my $class    = shift;
+	my $name     = $class->_class(shift) or return ();
 	my @children = ( $name );
 
 	# Do the search using a nicer, more memory efficient 
@@ -273,7 +285,7 @@ sub recursive_children {
 # Checks and expands ( if needed ) a class name
 sub _class {
 	my $class = shift;
-	my $name = shift or return '';
+	my $name  = shift or return '';
 
 	# Handle main shorthand
 	return 'main' if $name eq '::';
@@ -287,7 +299,7 @@ sub _class {
 # regardless of platform.
 sub _inc_filename {
 	my $class = shift;
-	my $name = $class->_class(shift) or return undef;
+	my $name  = $class->_class(shift) or return undef;
 	join( '/', split /(?:'|::)/, $name ) . '.pm';
 }
 
@@ -353,7 +365,7 @@ the class is not installed. Returns undef if the class name is invalid.
 =head2 loaded $class
 
 Tries to determine if a class is loaded by looking for symbol table entries.
-This method will work even if the class does not have it's own file, but is
+This method will work even if the class does not have its own file, but is
 contained inside a single file with multiple classes in it. Even in the
 case of some sort of run-time loading class being used, these typically
 leave some trace in the symbol table, so an C<Autoload> or C<Class::Autouse>
@@ -382,7 +394,7 @@ Returns undef on error.
 =head2 loaded_filename $class
 
 For a given, loaded, class, returns the name of the file that it was originally
-loaded from. Returns false if the class is not loaded, or did not have it's own
+loaded from. Returns false if the class is not loaded, or did not have its own
 file.
 
 =head2 functions $class
@@ -472,15 +484,13 @@ No known bugs, but I'm taking suggestions for additional functionality.
 
 Bugs should be reported via the CPAN bug tracker
 
-  http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Class%3A%3AInspector
+L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Class%3A%3AInspector>
 
 For other issues, contact the author
 
 =head1 AUTHOR
 
-        Adam Kennedy
-        cpan@ali.as
-        http://ali.as/
+Adam Kennedy (Maintainer), L<http://ali.as/>, cpan@ali.as
 
 =head1 SEE ALSO
 

@@ -35,7 +35,7 @@ METHODS
 
   loaded $class
     Tries to determine if a class is loaded by looking for symbol table
-    entries. This method will work even if the class does not have it's own
+    entries. This method will work even if the class does not have its own
     file, but is contained inside a single file with multiple classes in it.
     Even in the case of some sort of run-time loading class being used,
     these typically leave some trace in the symbol table, so an "Autoload"
@@ -64,7 +64,7 @@ METHODS
   loaded_filename $class
     For a given, loaded, class, returns the name of the file that it was
     originally loaded from. Returns false if the class is not loaded, or did
-    not have it's own file.
+    not have its own file.
 
   functions $class
     Returns a list of the names of all the functions in the classes
@@ -143,14 +143,12 @@ BUGS
 SUPPORT
     Bugs should be reported via the CPAN bug tracker
 
-      http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Class%3A%3AInspector
+    <http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Class%3A%3AInspector>
 
     For other issues, contact the author
 
 AUTHOR
-            Adam Kennedy
-            cpan@ali.as
-            http://ali.as/
+    Adam Kennedy (Maintainer), <http://ali.as/>, cpan@ali.as
 
 SEE ALSO
     Class::Handle, which wraps this one

@@ -5,10 +5,10 @@ WriteMakefile(
 	'VERSION_FROM' => 'lib/Class/Inspector.pm',
 	'PREREQ_PM'    => {
 		# Module dependencies
-		'File::Spec'   => 0.82,
+		'File::Spec'   => '0.82',
 
 		# Test file dependencies
-		'Test::More'   => 0,
+		'Test::More'   => '0.47',
 	},
 	($] >= 5.005) ? (
 		'AUTHOR'     => 'Adam Kennedy (cpan@ali.as)',
