@@ -16,7 +16,7 @@ SYNOPSIS
       Class::Inspector->functions( 'Foo::Class' );
       Class::Inspector->function_refs( 'Foo::Class' );
       Class::Inspector->function_exists( 'Foo::Class', 'bar' );
-      Class::Inspector->methods( 'Foo::Class' );
+      Class::Inspector->methods( 'Foo::Class', 'full', 'public' );
 
 DESCRIPTION
     Class::Inspector allows you to get information about a loaded
@@ -99,13 +99,61 @@ METHODS
     function does not exist. Returns undef on error, or if the class
     is not loaded.
 
-  methods( $class )
+  methods( $class, @options )
 
     For a given class name, the `methods' method will returns ALL
     the methods available to that class. This includes all methods
-    available from every class up the classes `@ISA' tree. Returns a
+    available from every class up the class' `@ISA' tree. Returns a
     reference to an array of the names of all the available methods
     on success. Returns undef if the class is not loaded.
+
+    A number of options are available to the `methods' method. These
+    should be listed after the class name, in any order.
+
+    public
+        The `public' option will return only 'public' methods, as
+        defined by the Perl convention of prepending an underscore
+        to any 'private' methods. The `public' option will
+        effectively remove any methods that start with an
+        underscore.
+
+    private
+        The `private' options will return only 'private' methods, as
+        defined by the Perl convention of prepending an underscore
+        to an private methods. The `private' option will effectively
+        remove an method that do not start with an underscore.
+
+        Note: The `public' and `private' options are mutually
+        exclusive
+
+    full
+        `methods' normally returns just the method name. Supplying
+        the `full' option will cause the methods to be returned as
+        the full names. That is, instead of returning `[ 'method1',
+        'method2', 'method3' ]', you would instead get `[
+        'Class::method1', 'AnotherClass::method2', 'Class::method3'
+        ]'.
+
+    expanded
+        The `expanded' option will cause a lot more information
+        about method to be returned. Instead of just the method
+        name, you will instead get an array reference containing the
+        method name as a single combined name, ala `full', the
+        seperate class and method, and a CODE ref to the actual
+        function ( if available ). Please note that the function
+        reference is not guarenteed to be available.
+        c<Class::Inspector> is intended at some later time, work
+        with modules that have some some of common run-time loader
+        in place ( e.g `Autoloader' or `Class::Autouse' for example.
+
+        The response from `methods( 'Class', 'expanded' )' would
+        look something like the following.
+
+          [
+            [ 'Class::method1', 'Class', 'method1', \&Class::method1 ],
+            [ 'Another::method2', 'Another', 'method2', \&Another::method2 ],
+            [ 'Foo::bar', 'Foo', 'bar', \&Foo::bar ],
+          ]
 
 BUGS
     No known bugs, but I'm taking suggestions for additional

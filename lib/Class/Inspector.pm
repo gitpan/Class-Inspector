@@ -18,7 +18,7 @@ use Class::ISA;
 # Declare globals
 use vars qw{$SEP $VERSION};
 BEGIN {
-	$VERSION = 0.1;
+	$VERSION = 0.2;
 	
 	# Use our own filename to determine the path seperator.
 	# Our file will be "something" . $SEP . "Class.pm".
@@ -160,6 +160,34 @@ sub function_exists {
 sub methods {
 	my $class = shift;
 	my $name = $class->_checkClass( shift ) or return undef;
+	my @arguments = map { lc $_ } @_;
+	
+	# Define the options hash
+	my %options = ();
+	
+	# Process the arguments to define the options
+	foreach ( @arguments ) {
+		if ( $_ eq 'public' ) {
+			# Only get public methods
+			return undef if $options{private};
+			$options{public} = 1;			
+		} elsif ( $_ eq 'private' ) {
+			# Only get private methods
+			return undef if $options{public};
+			$options{private} = 1;
+		} elsif ( $_ eq 'full' ) {
+			# Return the full method name
+			return undef if $options{expanded};
+			$options{full} = 1;
+		} elsif ( $_ eq 'expanded' ) {
+			# Returns class, method and function ref
+			return undef if $options{full};
+			$options{expanded} = 1;
+		} else {
+			# Unknown or unsupported options
+			return undef;
+		}
+	}
 
 	# Only works if the class is loaded
 	return undef unless $class->loaded( $name );
@@ -171,11 +199,25 @@ sub methods {
 	# Sort alphabetically and return.	
 	my %methods = ();
 	foreach my $namespace ( @path ) {
-		$methods{$_}++ foreach grep {
-			defined &{"$namespace\::$_"}
-			} keys %{"$namespace\::"};
+		foreach ( grep { defined &{"$namespace\::$_"} } 
+		keys %{"$namespace\::"} ) {
+			next if $methods{$_};
+			$methods{$_} = $namespace;
+		}
 	}
-	return [ sort keys %methods ];
+	
+	# Filter to public or private methods if needed
+	my @methodlist = sort keys %methods;
+	@methodlist = grep { ! /^\_/ } @methodlist if $options{public};
+	@methodlist = grep { /^\_/ } @methodlist if $options{private};
+
+	# Return in the correct format
+	@methodlist = map { "$methods{$_}\::$_" } @methodlist if $options{full};
+	@methodlist = map { 
+		[ "$methods{$_}\::$_", $methods{$_}, $_, \&{"$methods{$_}\::$_"} ] 
+		} @methodlist if $options{expanded};
+	
+	return \@methodlist;
 }
 
 
@@ -222,7 +264,7 @@ Class::Inspector - Provides information about Classes
   Class::Inspector->functions( 'Foo::Class' );
   Class::Inspector->function_refs( 'Foo::Class' );
   Class::Inspector->function_exists( 'Foo::Class', 'bar' );
-  Class::Inspector->methods( 'Foo::Class' );
+  Class::Inspector->methods( 'Foo::Class', 'full', 'public' );
 
 =head1 DESCRIPTION
 
@@ -298,13 +340,62 @@ in UNIVERSAL, and hence to every other class. Returns 1 if the function
 exists. Returns 0 if the function does not exist. Returns undef on error,
 or if the class is not loaded.
 
-=head2 methods( $class )
+=head2 methods( $class, @options )
 
 For a given class name, the C<methods> method will returns ALL the methods
 available to that class. This includes all methods available from every
-class up the classes C<@ISA> tree. Returns a reference to an array of the
+class up the class' C<@ISA> tree. Returns a reference to an array of the
 names of all the available methods on success. Returns undef if the class
 is not loaded.
+
+A number of options are available to the C<methods> method. These should
+be listed after the class name, in any order.
+
+=over 4
+
+=item public
+
+The C<public> option will return only 'public' methods, as defined by the Perl
+convention of prepending an underscore to any 'private' methods. The C<public> 
+option will effectively remove any methods that start with an underscore.
+
+=item private
+
+The C<private> options will return only 'private' methods, as defined by the
+Perl convention of prepending an underscore to an private methods. The
+C<private> option will effectively remove an method that do not start with an
+underscore.
+
+B<Note: The C<public> and C<private> options are mutually exclusive>
+
+=item full
+
+C<methods> normally returns just the method name. Supplying the C<full> option
+will cause the methods to be returned as the full names. That is, instead of
+returning C<[ 'method1', 'method2', 'method3' ]>, you would instead get
+C<[ 'Class::method1', 'AnotherClass::method2', 'Class::method3' ]>.
+
+=item expanded
+
+The C<expanded> option will cause a lot more information about method to be 
+returned. Instead of just the method name, you will instead get an array
+reference containing the method name as a single combined name, ala C<full>,
+the seperate class and method, and a CODE ref to the actual function ( if
+available ). Please note that the function reference is not guarenteed to 
+be available. c<Class::Inspector> is intended at some later time, work 
+with modules that have some some of common run-time loader in place ( e.g
+C<Autoloader> or C<Class::Autouse> for example.
+
+The response from C<methods( 'Class', 'expanded' )> would look something like
+the following.
+
+  [
+    [ 'Class::method1', 'Class', 'method1', \&Class::method1 ],
+    [ 'Another::method2', 'Another', 'method2', \&Another::method2 ],
+    [ 'Foo::bar', 'Foo', 'bar', \&Foo::bar ],
+  ]
+
+=back
 
 =head1 BUGS
 
