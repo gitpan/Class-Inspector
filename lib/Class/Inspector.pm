@@ -17,13 +17,16 @@ use Class::ISA;
 use File::Spec ();
 
 # Globals
-use vars qw{$VERSION $RE_SYMBOL $RE_CLASS};
+use vars qw{$VERSION $RE_SYMBOL $RE_CLASS $UNIX};
 BEGIN {
-	$VERSION = 1.03;
+	$VERSION = 1.04;
 
-	# Precompile some regexs
+	# Predefine some regexs
 	$RE_SYMBOL  = qr/\A[^\W\d]\w*\z/;
 	$RE_CLASS   = qr/\A[^\W\d]\w*(?:(?:'|::)[^\W\d]\w*)*\z/;
+
+	# Are we on Unix?
+	$UNIX = !! ( $File::Spec::ISA[0] eq 'File::Spec::Unix' );
 }
 
 
@@ -35,14 +38,17 @@ BEGIN {
 
 # Is the class installed on the machine, or rather, is it available
 # to Perl. This is basically just a wrapper around C<resolved_filename>.
+# It is installed if it is either already available in %INC, or we
+# can resolve a filename for it.
 sub installed {
-	# Can we find a resolved filename
-	shift->resolved_filename(shift) and 1;
+	my $class = shift;
+	!! ($class->loaded_filename($_[0]) or $class->resolved_filename($_[0]));
 }
 
 # Is the class loaded.
 # We do this by seeing if the namespace is "occupied", which basically
-# means any symbols other than child symbol table branches.
+# means either we can find $VERSION, or any symbols other than child
+# symbol table branches exist.
 sub loaded {
 	my $class = shift;
 	my $name = $class->_class(shift) or return undef;
@@ -66,13 +72,14 @@ sub filename {
 # Resolve the full filename for the class.
 sub resolved_filename {
 	my $class = shift;
-	my $filename = $class->filename(shift) or return undef;
+	my $filename = $class->_inc_filename(shift) or return undef;
+	my @try_first = @_;
 
 	# Look through the @INC path to find the file
-	my @try_first = @_;
 	foreach ( @try_first, @INC ) {
-		my $full = File::Spec->catfile( $_, $filename );
-		return $full if -e $full;
+		my $full = "$_/$filename";
+		next unless -e $full;
+		return $UNIX ? $full : $class->_inc_to_local($full);
 	}
 
 	# File not found
@@ -80,11 +87,11 @@ sub resolved_filename {
 }
 
 # Get the loaded filename for the class.
-# Look the base filename up in %INC.
+# Look the base filename up in %INC
 sub loaded_filename {
 	my $class = shift;
-	my $filename = $class->filename( shift ) or return undef;
-	$INC{ $filename };
+	my $filename = $class->_inc_filename(shift);
+	$UNIX ? $INC{$filename} : $class->_inc_to_local($INC{$filename});
 }
 
 
@@ -264,8 +271,30 @@ sub _class {
 	return 'main' if $name eq '::';
 	$name =~ s/\A::/main::/;
 
-	# Check the class name
+	# Check the class name is valid
 	$name =~ /$RE_CLASS/o ? $name : '';
+}
+
+# Create a INC-specific filename, which always uses '/'
+# regardless of platform.
+sub _inc_filename {
+	my $class = shift;
+	my $name = $class->_class(shift) or return undef;
+	join( '/', split /(?:'|::)/, $name ) . '.pm';
+}
+
+# Convert INC-specific file name to local file name
+sub _inc_to_local {
+	my $class = shift;
+
+	# Shortcut in the Unix case
+	return $_[0] if $File::Spec::ISA[0] eq 'File::Spec::Unix';
+
+	# Get the INC filename and convert
+	my $inc_name = shift or return undef;
+	my ($vol, $dir, $file) = File::Spec->catdir;
+	$dir = File::Spec->catdir( File::Spec->splitdir( $dir ) );
+	File::Spec->catpath( $vol, $dir, $file );
 }
 
 1;

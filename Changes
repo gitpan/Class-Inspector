@@ -1,5 +1,9 @@
 Revision history for Perl extension Class::Inspector.
 
+1.04 Tue Mar 23 2004
+	- Apparently on Windows @INC/%INC use Unix style backslashes
+	  Updated to handle this fact.
+
 1.03 Sun Dec 14 2003
 	- Fixed an infinite loop bug in recursive_children
 

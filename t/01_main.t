@@ -8,7 +8,7 @@ use strict;
 use lib '../../modules'; # Development testing
 use lib '../lib';           # Installation testing
 use UNIVERSAL 'isa';
-use Test::More tests => 47;
+use Test::More tests => 50;
 
 # Set up any needed globals
 use vars qw{$loaded $ci $bad $base_functions $base_public};
@@ -23,7 +23,7 @@ BEGIN {
 	$bad = 'Class::Inspector::Nonexistant';
 
 	# How many functions and public methods are there in Class::Inspector
-	$base_functions = 12;
+	$base_functions = 14;
 	$base_public = 11;
 }
 
@@ -54,11 +54,11 @@ ok( 1, 'Loads' );
 
 
 # Check the good/bad class code
-ok( $ci->_class( $ci ), 'Class validator works for known valid' );
-ok( $ci->_class( $bad ), 'Class validator works for correctly formatted, but not installed' );
-ok( $ci->_class( 'A::B::C::D::E' ), 'Class validator works for long classes' );
-ok( $ci->_class( '::' ), 'Class validator allows main' );
-ok( $ci->_class( '::Blah' ), 'Class validator works for main aliased' );
+ok(   $ci->_class( $ci ), 'Class validator works for known valid' );
+ok(   $ci->_class( $bad ), 'Class validator works for correctly formatted, but not installed' );
+ok(   $ci->_class( 'A::B::C::D::E' ), 'Class validator works for long classes' );
+ok(   $ci->_class( '::' ), 'Class validator allows main' );
+ok(   $ci->_class( '::Blah' ), 'Class validator works for main aliased' );
 ok( ! $ci->_class(), 'Class validator failed for missing class' );
 ok( ! $ci->_class( '4teen' ), 'Class validator fails for number starting class' );
 ok( ! $ci->_class( 'Blah::%f' ), 'Class validator catches bad characters' );
@@ -69,7 +69,7 @@ ok( ! $ci->_class( 'Blah::%f' ), 'Class validator catches bad characters' );
 
 
 # Check the loaded method
-ok( $ci->loaded( $ci ), "->loaded detects loaded" );
+ok(   $ci->loaded( $ci ), "->loaded detects loaded" );
 ok( ! $ci->loaded( $bad ), "->loaded detects not loaded" );
 
 
@@ -79,10 +79,12 @@ ok( ! $ci->loaded( $bad ), "->loaded detects not loaded" );
 # Check the file name methods
 my $filename = $ci->filename( $ci );
 ok( $filename eq File::Spec->catfile( "Class", "Inspector.pm" ), "->filename works correctly" );
-ok( $INC{$filename} eq $ci->loaded_filename( $ci ),
-	"->loaded_filename works" );
-ok( $INC{$filename} eq $ci->resolved_filename( $ci ),
-	"->resolved_filename works" );
+my $inc_filename = $ci->_inc_filename( $ci );
+ok( $inc_filename eq "Class/Inspector.pm", "->_inc_filename works correctly" );
+ok( index( $ci->loaded_filename($ci), $filename ) >= 0, "->loaded_filename works" );
+ok( ($filename eq $inc_filename or index( $ci->loaded_filename($ci), $inc_filename ) == -1), "->loaded_filename works" );
+ok( index( $ci->resolved_filename($ci), $filename ) >= 0, "->resolved_filename works" );
+ok( ($filename eq $inc_filename or index( $ci->resolved_filename($ci), $inc_filename ) == -1), "->resolved_filename works" );
 
 
 
@@ -183,12 +185,12 @@ ok( ! $ci->methods( $bad ), "Public ->methods fails correctly" );
 $methods = $ci->methods( $ci, 'private' );
 ok( (isa( $methods, 'ARRAY' )
 	and $methods->[0] eq '_class'
-	and scalar @$methods == 1),
+	and scalar @$methods == 3),
 	"Private ->methods works for non-inheriting class" );
 $methods = $ci->methods( 'Class::Inspector::Dummy', 'private' );
 ok( (isa( $methods, 'ARRAY' )
 	and $methods->[0] eq '_a_first'
-	and scalar @$methods == 3
+	and scalar @$methods == 5
 	and scalar( grep { /dummy/ } @$methods ) == 1),
 	"Private ->methods works for inheriting class" );
 ok( ! $ci->methods( $bad ), "Private ->methods fails correctly" );
