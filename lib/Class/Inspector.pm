@@ -11,15 +11,15 @@ package Class::Inspector;
 
 # We don't want to use strict refs, since we do a lot of things in here
 # that arn't strict refs friendly.
-use strict qw{vars subs};
+use strict 'vars', 'subs';
 
 use Class::ISA;
 use File::Spec ();
 
-# Declare globals
+# Globals
 use vars qw{$VERSION $RE_SYMBOL $RE_CLASS};
 BEGIN {
-	$VERSION = 1.01;
+	$VERSION = 1.02;
 
 	# Precompile some regexs
 	$RE_SYMBOL  = qr/\A[^\W\d]\w*\z/;
@@ -36,10 +36,8 @@ BEGIN {
 # Is the class installed on the machine, or rather, is it available
 # to Perl. This is basically just a wrapper around C<resolved_filename>.
 sub installed {
-	my $class = shift;
-
 	# Can we find a resolved filename
-	$class->resolved_filename( shift ) and 1;
+	shift->resolved_filename(shift) and 1;
 }
 
 # Is the class loaded.
@@ -47,7 +45,7 @@ sub installed {
 # means any symbols other than child symbol table branches.
 sub loaded {
 	my $class = shift;
-	my $name = $class->_class( shift ) or return undef;
+	my $name = $class->_class(shift) or return undef;
 
 	# Are there any symbol table entries other than other namespaces
 	foreach ( keys %{"${name}::"} ) {
@@ -61,14 +59,14 @@ sub loaded {
 # First::Second -> First/Second.pm
 sub filename {
 	my $class = shift;
-	my $name = $class->_class( shift ) or return undef;
+	my $name = $class->_class(shift) or return undef;
 	File::Spec->catfile( split /(?:'|::)/, $name ) . '.pm';
 }
 
 # Resolve the full filename for the class.
 sub resolved_filename {
 	my $class = shift;
-	my $filename = $class->filename( shift ) or return undef;
+	my $filename = $class->filename(shift) or return undef;
 
 	# Look through the @INC path to find the file
 	my @try_first = @_;
@@ -236,13 +234,15 @@ sub recursive_children {
 	my $name = $class->_class(shift) or return ();
 	my @children = ( $name );
 
-	# Do the search using a nicer, more memory efficient
+	# Do the search using a nicer, more memory efficient 
 	# variant of actual recursion.
-	{ no strict 'refs';
-		my $i = 0;
-		while ( my $namespace = $children[$i++] ) {
-			push @children, map { "${name}::$_" } grep { s/::$// } keys %{"${namespace}::"};
-		}
+	my $i = 0;
+	no strict 'refs';
+	while ( my $namespace = $children[$i++] ) {
+		push @children, map { "${name}::$_" }
+			grep { ! /^::/ } # Ignore things like ::ISA::CACHE::
+			grep { s/::$// }
+			keys %{"${namespace}::"};
 	}
 
 	sort @children;
@@ -435,7 +435,7 @@ No known bugs, but I'm taking suggestions for additional functionality.
 
 Bugs should be reported via the CPAN bug tracker
 
-http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Class%3A%3AInspector
+  http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Class%3A%3AInspector
 
 For other issues, contact the author
 

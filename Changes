@@ -1,5 +1,9 @@
 Revision history for Perl extension Class::Inspector.
 
+1.02 Sun Dec 14 2003
+	- recursive children ignores ::ISA::CACHE::
+	- Minor code tweaks
+
 1.01 Mon Nov 10 2003
 	- Symbol table entries due to overloads and anonymous subs
 	  are filtered from the results correctly.
