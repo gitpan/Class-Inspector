@@ -1,0 +1,10 @@
+CVS/Entries
+CVS/Repository
+CVS/Root
+Changes
+LICENSE
+MANIFEST
+Makefile.PL
+README
+lib/Class/Inspector.pm
+t/01_main.t
