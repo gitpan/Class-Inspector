@@ -1,13 +1,43 @@
 package Class::Inspector;
 
-# Class::Inspector contains a range of static methods that can be used
-# to get information about a class ( or package ) in a convient way.
+=pod
 
-# In this module we use $class to refer to OUR class, and $name to
-# refer to class names being passed to us to be acted upon.
-#
-# Almost everything in here can be done in other ways, but a lot
-# involve playing with special varables, symbol table, and the like.
+=head1 NAME
+
+Class::Inspector - Get information about a class and its structure
+
+=head1 SYNOPSIS
+
+  use Class::Inspector;
+  
+  # Is a class installed and/or loaded
+  Class::Inspector->installed( 'Foo::Class' );
+  Class::Inspector->loaded( 'Foo::Class' );
+  
+  # Filename related information
+  Class::Inspector->filename( 'Foo::Class' );
+  Class::Inspector->resolved_filename( 'Foo::Class' );
+  
+  # Get subroutine related information
+  Class::Inspector->functions( 'Foo::Class' );
+  Class::Inspector->function_refs( 'Foo::Class' );
+  Class::Inspector->function_exists( 'Foo::Class', 'bar' );
+  Class::Inspector->methods( 'Foo::Class', 'full', 'public' );
+  
+  # Find all loaded classes that are something
+  Class::Inspector->find( 'Foo::Class' );
+
+=head1 DESCRIPTION
+
+Class::Inspector allows you to get information about a loaded class. Most or
+all of this information can be found in other ways, but they arn't always
+very friendly, and usually involve a relatively high level of Perl wizardry,
+or strange and unusual looking code. Class::Inspector attempts to provide 
+an easier, more friendly interface to this information.
+
+=head1 METHODS
+
+=cut
 
 # Load Overhead: 236k
 
@@ -17,13 +47,13 @@ use strict 'vars', 'subs';
 use File::Spec ();
 
 # Globals
-use vars qw{$VERSION $RE_SYMBOL $RE_CLASS $UNIX};
+use vars qw{$VERSION $RE_IDENT $RE_CLASS $UNIX};
 BEGIN {
-	$VERSION = '1.08';
+	$VERSION = '1.10';
 
 	# Predefine some regexs
-	$RE_SYMBOL  = qr/\A[^\W\d]\w*\z/;
-	$RE_CLASS   = qr/\A[^\W\d]\w*(?:(?:'|::)[^\W\d]\w*)*\z/;
+	$RE_IDENT = qr/\A[^\W\d]\w*\z/s;
+	$RE_CLASS = qr/\A[^\W\d]\w*(?:(?:'|::)[^\W\d]\w*)*\z/s;
 
 	# Are we on Unix?
 	$UNIX = !! ( $File::Spec::ISA[0] eq 'File::Spec::Unix' );
@@ -36,21 +66,51 @@ BEGIN {
 #####################################################################
 # Basic Methods
 
-# Is the class installed on the machine, or rather, is it available
-# to Perl. This is basically just a wrapper around C<resolved_filename>.
-# It is installed if it is either already available in %INC, or we
-# can resolve a filename for it.
+=pod
+
+=head2 installed $class
+
+The C<installed> static method tries to determine if a class is installed
+on the machine, or at least available to Perl. It does this by wrapping
+around C<resolved_filename>.
+
+Returns true if installed/available, false if the class is not installed,
+or C<undef> if the class name is invalid.
+
+=cut
+
 sub installed {
 	my $class = shift;
 	!! ($class->loaded_filename($_[0]) or $class->resolved_filename($_[0]));
 }
 
-# Is the class loaded.
-# We do this by seeing if the namespace is "occupied", which basically
-# means either we can find $VERSION or @ISA, or at least one subroutine.
+=pod
+
+=head2 loaded $class
+
+The C<loaded> static method tries to determine if a class is loaded by
+looking for symbol table entries.
+
+This method it uses to determine this will work even if the class does not
+have its own file, but is contained inside a single file with multiple
+classes in it. Even in the case of some sort of run-time loading class
+being used, these typically leave some trace in the symbol table, so an
+L<Autoload> or L<Class::Autouse>-based class should correctly appear
+loaded.
+
+Returns true if the class is loaded, false if not, or C<undef> if the
+class name is invalid.
+
+=cut
+
 sub loaded {
 	my $class = shift;
-	my $name = $class->_class(shift) or return undef;
+	my $name  = $class->_class(shift) or return undef;
+	$class->_loaded($name);
+}
+
+sub _loaded {
+	my ($class, $name) = @_;
 
 	# Handle by far the two most common cases
 	# This is very fast and handles 99% of cases.
@@ -71,18 +131,53 @@ sub loaded {
 	'';
 }
 
-# Convert to a filename, in the style of
-# First::Second -> First/Second.pm
+=pod
+
+=head2 filename $class
+
+For a given class, returns the base filename for the class. This will NOT
+be a fully resolved filename, just the part of the filename BELOW the
+C<@INC> entry.
+
+  print Class->filename( 'Foo::Bar' );
+  > Foo/Bar.pm
+
+This filename will be returned with the right seperator for the local
+platform, and should work on all platforms.
+
+Returns the filename on success or C<undef> if the class name is invalid.
+
+=cut
+
 sub filename {
 	my $class = shift;
-	my $name = $class->_class(shift) or return undef;
+	my $name  = $class->_class(shift) or return undef;
 	File::Spec->catfile( split /(?:'|::)/, $name ) . '.pm';
 }
 
-# Resolve the full filename for the class.
+=pod
+
+=head2 resolved_filename $class, @try_first
+
+For a given class, the C<resolved_filename> static method returns the fully
+resolved filename for a class. That is, the file that the class would be
+loaded from.
+
+This is not nescesarily the file that the class WAS loaded from, as the
+value returned is determined each time it runs, and the C<@INC> include
+path may change.
+
+To get the actual file for a loaded class, see the C<loaded_filename>
+method.
+
+Returns the filename for the class, or C<undef> if the class name is
+invalid.
+
+=cut
+
 sub resolved_filename {
-	my $class = shift;
-	my $filename = $class->_inc_filename(shift) or return undef;
+	my $class     = shift;
+	my $filename  = $class->_inc_filename(shift) or return undef;
 	my @try_first = @_;
 
 	# Look through the @INC path to find the file
@@ -96,10 +191,21 @@ sub resolved_filename {
 	'';
 }
 
-# Get the loaded filename for the class.
-# Look the base filename up in %INC
+=pod
+
+=head2 loaded_filename $class
+
+For a given loaded class, the C<loaded_filename> static method determines
+(via the C<%INC> hash) the name of the file that it was originally loaded
+from.
+
+Returns a resolved file path, or false if the class did not have it's own
+file.
+
+=cut
+
 sub loaded_filename {
-	my $class = shift;
+	my $class    = shift;
 	my $filename = $class->_inc_filename(shift);
 	$UNIX ? $INC{$filename} : $class->_inc_to_local($INC{$filename});
 }
@@ -111,24 +217,46 @@ sub loaded_filename {
 #####################################################################
 # Sub Related Methods
 
-# Get a reference to a list of function names for a class.
-# Note: functions NOT methods.
-# Only works if the class is loaded
+=pod
+
+=head2 functions $class
+
+For a loaded class, the C<functions> static method returns a list of the
+names of all the functions in the classes immediate namespace.
+
+Note that this is not the METHODS of the class, just the functions.
+
+Returns a reference to an array of the function names on success, or C<undef>
+if the class name is invalid or the class is not loaded.
+
+=cut
+
 sub functions {
 	my $class = shift;
 	my $name  = $class->_class(shift) or return undef;
 	return undef unless $class->loaded( $name );
 
 	# Get all the CODE symbol table entries
-	my @functions = sort grep { /$RE_SYMBOL/o }
+	my @functions = sort grep { /$RE_IDENT/o }
 		grep { defined &{"${name}::$_"} }
 		keys %{"${name}::"};
 	\@functions;
 }
 
-# As above, but returns a ref to an array of the actual 
-# CODE refs of the functions.
-# The class must be loaded for this to work.
+=pod
+
+=head2 function_refs $class
+
+For a loaded class, the C<function_refs> static method returns references to
+all the functions in the classes immediate namespace.
+
+Note that this is not the METHODS of the class, just the functions.
+
+Returns a reference to an array of C<CODE> refs of the functions on
+success, or C<undef> if the class is not loaded.
+
+=cut
+
 sub function_refs {
 	my $class = shift;
 	my $name  = $class->_class(shift) or return undef;
@@ -137,13 +265,27 @@ sub function_refs {
 	# Get all the CODE symbol table entries, but return
 	# the actual CODE refs this time.
 	my @functions = map { \&{"${name}::$_"} }
-		sort grep { /$RE_SYMBOL/o }
+		sort grep { /$RE_IDENT/o }
 		grep { defined &{"${name}::$_"} }
 		keys %{"${name}::"};
 	\@functions;
 }
 
-# Does a particular function exist
+=pod
+
+=head2 function_exists $class, $function
+
+Given a class and function name the C<function_exists> static method will
+check to see if the function exists in the class.
+
+Note that this is as a function, not as a method. To see if a method
+exists for a class, use the C<can> method for any class or object.
+
+Returns true if the function exists, false if not, or C<undef> if the
+class or function name are invalid, or the class is not loaded.
+
+=cut
+
 sub function_exists {
 	my $class    = shift;
 	my $name     = $class->_class( shift ) or return undef;
@@ -156,7 +298,73 @@ sub function_exists {
 	defined &{"${name}::$function"};
 }
 
-# Get all the available methods for the class
+=pod
+
+=head2 methods $class, @options
+
+For a given class name, the C<methods> static method will returns ALL
+the methods available to that class. This includes all methods available
+from every class up the class' C<@ISA> tree.
+
+Returns a reference to an array of the names of all the available methods
+on success, or C<undef> if the class name is invalid or the class is not
+loaded.
+
+A number of options are available to the C<methods> method that will alter
+the results returned. These should be listed after the class name, in any
+order.
+
+  # Only get public methods
+  my $method = Class::Inspector->methods( 'My::Class', 'public' );
+
+=over 4
+
+=item public
+
+The C<public> option will return only 'public' methods, as defined by the Perl
+convention of prepending an underscore to any 'private' methods. The C<public> 
+option will effectively remove any methods that start with an underscore.
+
+=item private
+
+The C<private> options will return only 'private' methods, as defined by the
+Perl convention of prepending an underscore to an private methods. The
+C<private> option will effectively remove an method that do not start with an
+underscore.
+
+B<Note: The C<public> and C<private> options are mutually exclusive>
+
+=item full
+
+C<methods> normally returns just the method name. Supplying the C<full> option
+will cause the methods to be returned as the full names. That is, instead of
+returning C<[ 'method1', 'method2', 'method3' ]>, you would instead get
+C<[ 'Class::method1', 'AnotherClass::method2', 'Class::method3' ]>.
+
+=item expanded
+
+The C<expanded> option will cause a lot more information about method to be 
+returned. Instead of just the method name, you will instead get an array
+reference containing the method name as a single combined name, ala C<full>,
+the seperate class and method, and a CODE ref to the actual function ( if
+available ). Please note that the function reference is not guarenteed to 
+be available. C<Class::Inspector> is intended at some later time, work 
+with modules that have some some of common run-time loader in place ( e.g
+C<Autoloader> or C<Class::Autouse> for example.
+
+The response from C<methods( 'Class', 'expanded' )> would look something like
+the following.
+
+  [
+    [ 'Class::method1',   'Class',   'method1', \&Class::method1   ],
+    [ 'Another::method2', 'Another', 'method2', \&Another::method2 ],
+    [ 'Foo::bar',         'Foo',     'bar',     \&Foo::bar         ],
+  ]
+
+=back
+
+=cut
+
 sub methods {
 	my $class     = shift;
 	my $name      = $class->_class( shift ) or return undef;
@@ -212,7 +420,7 @@ sub methods {
 	my %methods = ();
 	foreach my $namespace ( @path ) {
 		my @functions = grep { ! $methods{$_} }
-			grep { /$RE_SYMBOL/o }
+			grep { /$RE_IDENT/o }
 			grep { defined &{"${namespace}::$_"} } 
 			keys %{"${namespace}::"};
 		foreach ( @functions ) {
@@ -223,7 +431,7 @@ sub methods {
 	# Filter to public or private methods if needed
 	my @methodlist = sort keys %methods;
 	@methodlist = grep { ! /^\_/ } @methodlist if $options{public};
-	@methodlist = grep { /^\_/ }   @methodlist if $options{private};
+	@methodlist = grep {   /^\_/ } @methodlist if $options{private};
 
 	# Return in the correct format
 	@methodlist = map { "$methods{$_}::$_" } @methodlist if $options{full};
@@ -232,6 +440,63 @@ sub methods {
 		} @methodlist if $options{expanded};
 
 	\@methodlist;
+}
+
+
+
+
+
+#####################################################################
+# Search Methods
+
+=pod
+
+=head2 find $class
+
+The C<find> static method will search then entire namespace (and thus
+B<all> currently loaded classes) to find all classes that are of the
+type provided as a the parameter.
+
+The actual test will be done by calling C<isa> on the class as a static
+method. (i.e. C<My::Class-E<gt>isa($class)>.
+
+Returns a reference to a list of the loaded classes that match the class
+provided, or false is none match, or C<undef> if the class name provided
+is invalid.
+
+=cut
+
+sub find {
+	my $class = shift;
+	my $name  = $class->_class( shift ) or return undef;
+
+	# Prepare the search queue
+	my @found = ();
+	my @queue = grep { $_ ne 'main' } $class->_find_children('');
+	while ( @queue ) {
+		my $c = shift(@queue); # c for class
+		if ( $class->_loaded($c) and $c->isa($name) ) {
+			push @found, $c;
+		}
+
+		# Add any child namespaces to the head of the queue.
+		# This keeps the queue length shorted, and allows us
+		# not to have to do another sort at the end.
+		unshift @queue, map { "${c}::$_" } $class->_find_children($c);
+	}
+
+	@found ? \@found : '';
+}
+
+sub _find_children {
+	my ($class, $name) = @_;
+	return sort
+		grep {
+			substr($_, -2, 2, '') eq '::'
+			and
+			/$RE_IDENT/o
+		}
+		keys %{"${name}::"};
 }
 
 
@@ -319,178 +584,23 @@ sub _inc_to_local {
 
 1;
 
-__END__
-
 =pod
 
-=head1 NAME
+=head1 TO DO
 
-Class::Inspector - Provides information about Classes
-
-=head1 SYNOPSIS
-
-  use Class::Inspector;
-  
-  # Is a class installed and/or loaded
-  Class::Inspector->installed( 'Foo::Class' );
-  Class::Inspector->loaded( 'Foo::Class' );
-  
-  # Filename related information
-  Class::Inspector->filename( 'Foo::Class' );
-  Class::Inspector->resolved_filename( 'Foo::Class' );
-  
-  # Get subroutine related information
-  Class::Inspector->functions( 'Foo::Class' );
-  Class::Inspector->function_refs( 'Foo::Class' );
-  Class::Inspector->function_exists( 'Foo::Class', 'bar' );
-  Class::Inspector->methods( 'Foo::Class', 'full', 'public' );
-
-=head1 DESCRIPTION
-
-Class::Inspector allows you to get information about a loaded class. Most or
-all of this information can be found in other ways, but they arn't always
-very friendly, and usually involve a relatively high level of Perl wizardry,
-or strange and unusual looking code. Class::Inspector attempts to provide 
-an easier, more friendly interface to this information.
-
-=head1 METHODS
-
-=head2 installed $class
-
-Tries to determine if a class is installed on the machine, or at least 
-available to Perl. It does this by essentially wrapping around 
-C<resolved_filename>. Returns true if installed/available, returns 0 if
-the class is not installed. Returns undef if the class name is invalid.
-
-=head2 loaded $class
-
-Tries to determine if a class is loaded by looking for symbol table entries.
-This method will work even if the class does not have its own file, but is
-contained inside a single file with multiple classes in it. Even in the
-case of some sort of run-time loading class being used, these typically
-leave some trace in the symbol table, so an C<Autoload> or C<Class::Autouse>
-based class should correctly appear loaded.
-
-=head2 filename $class
-
-For a given class, returns the base filename for the class. This will NOT be
-a fully resolved filename, just the part of the filename BELOW the @INC entry.
-
-For example: Class->filename( 'Foo::Bar' ) returns 'Foo/Bar.pm'
-
-This filename will be returned for the current platform. It should work on all
-platforms. Returns the filename on success. Returns undef on error, which could
-only really be caused by an invalid class name.
-
-=head2 resolved_filename $class, @try_first
-
-For a given class, returns the fully resolved filename for a class. That is, the
-file that the class would be loaded from. This is not nescesarily the file that
-the class WAS loaded from, as the value returned is determined each time it runs,
-and the @INC include path may change. To get the actual file for a loaded class,
-see the C<loaded_filename> method. Returns the filename for the class on success. 
-Returns undef on error.
-
-=head2 loaded_filename $class
-
-For a given, loaded, class, returns the name of the file that it was originally
-loaded from. Returns false if the class is not loaded, or did not have its own
-file.
-
-=head2 functions $class
-
-Returns a list of the names of all the functions in the classes immediate
-namespace. Note that this is not the METHODS of the class, just the functions.
-Returns a reference to an array of the function names on success. Returns undef
-on error or if the class is not loaded.
-
-=head2 function_refs $class
-
-Returns a list of references to all the functions in the classes immediate
-namespace. Returns a reference to an array of CODE refs of the functions on
-success. Returns undef on error or if the class is not loaded.
-
-=head2 function_exists $class, $function
-
-Given a class and function the C<function_exists> method will check to see
-if the function exists in the class. Note that this is as a function, not
-as a method. To see if a method exists for a class, use the C<can> method
-in UNIVERSAL, and hence to every other class. Returns 1 if the function
-exists. Returns 0 if the function does not exist. Returns undef on error,
-or if the class is not loaded.
-
-=head2 methods $class, @options
-
-For a given class name, the C<methods> method will returns ALL the methods
-available to that class. This includes all methods available from every
-class up the class' C<@ISA> tree. Returns a reference to an array of the
-names of all the available methods on success. Returns undef if the class
-is not loaded.
-
-A number of options are available to the C<methods> method. These should
-be listed after the class name, in any order.
-
-=over 4
-
-=item public
-
-The C<public> option will return only 'public' methods, as defined by the Perl
-convention of prepending an underscore to any 'private' methods. The C<public> 
-option will effectively remove any methods that start with an underscore.
-
-=item private
-
-The C<private> options will return only 'private' methods, as defined by the
-Perl convention of prepending an underscore to an private methods. The
-C<private> option will effectively remove an method that do not start with an
-underscore.
-
-B<Note: The C<public> and C<private> options are mutually exclusive>
-
-=item full
-
-C<methods> normally returns just the method name. Supplying the C<full> option
-will cause the methods to be returned as the full names. That is, instead of
-returning C<[ 'method1', 'method2', 'method3' ]>, you would instead get
-C<[ 'Class::method1', 'AnotherClass::method2', 'Class::method3' ]>.
-
-=item expanded
-
-The C<expanded> option will cause a lot more information about method to be 
-returned. Instead of just the method name, you will instead get an array
-reference containing the method name as a single combined name, ala C<full>,
-the seperate class and method, and a CODE ref to the actual function ( if
-available ). Please note that the function reference is not guarenteed to 
-be available. C<Class::Inspector> is intended at some later time, work 
-with modules that have some some of common run-time loader in place ( e.g
-C<Autoloader> or C<Class::Autouse> for example.
-
-The response from C<methods( 'Class', 'expanded' )> would look something like
-the following.
-
-  [
-    [ 'Class::method1',   'Class',   'method1', \&Class::method1   ],
-    [ 'Another::method2', 'Another', 'method2', \&Another::method2 ],
-    [ 'Foo::bar',         'Foo',     'bar',     \&Foo::bar         ],
-  ]
-
-=back
-
-=head1 BUGS
-
-No known bugs, but I'm taking suggestions for additional functionality.
+- Adding Class::Inspector::Functions
 
 =head1 SUPPORT
 
 Bugs should be reported via the CPAN bug tracker
 
-L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Class%3A%3AInspector>
+L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Class-Inspector>
 
 For other issues, or commercial enhancement or support, contact the author.
 
 =head1 AUTHOR
 
-Adam Kennedy (Maintainer), L<http://ali.as/>, cpan@ali.as
+Adam Kennedy, L<http://ali.as/>, cpan@ali.as
 
 =head1 SEE ALSO
 
@@ -499,6 +609,7 @@ L<Class::Handle>, which wraps this one
 =head1 COPYRIGHT
 
 Copyright (c) 2002 - 2004 Adam Kennedy. All rights reserved.
+
 This program is free software; you can redistribute
 it and/or modify it under the same terms as Perl itself.
 

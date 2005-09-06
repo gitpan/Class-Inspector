@@ -1,5 +1,13 @@
 Revision history for Perl extension Class::Inspector.
 
+1.10 Mon Sep  5 2005
+	- Added the ->find method
+	- Cleaned up and reorganised the POD
+	- Made sure all return conditions are documented properly
+	- Converted to Module::Install
+
+1.09 skipped
+
 1.08 Tue Feb 15 2005
 	- Removing braindead Build.PL
 

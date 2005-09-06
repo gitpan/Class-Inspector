@@ -17,60 +17,36 @@ BEGIN {
 	}
 }
 
-use Test::More tests => 51;
+use Test::More tests => 53;
+use Class::Inspector ();
 
-# Set up any needed globals
-use vars qw{$loaded $ci $bad $base_functions $base_public};
-BEGIN {
-	$loaded = 0;
-	$| = 1;
+# To make maintaining this a little faster,
+# CI is defined as Class::Inspector, and
+# BAD for a class we know doesn't exist.
+use constant CI  => 'Class::Inspector';
+use constant BAD => 'Class::Inspector::Nonexistant';
 
-	# To make maintaining this a little faster,
-	# $ci is defined as Class::Inspector, and
-	# $bad for a class we know doesn't exist.
-	$ci = 'Class::Inspector';
-	$bad = 'Class::Inspector::Nonexistant';
-
-	# How many functions and public methods are there in Class::Inspector
-	$base_functions = 14;
-	$base_public = 11;
-}
-
-
-
-
-# Check their perl version
-BEGIN {
-	ok( $] >= 5.005, "Your perl is new enough" );
-}
+# How many functions and public methods are there in Class::Inspector
+my $base_functions = 17;
+my $base_public    = 12;
+my $base_private   = $base_functions - $base_public;
 
 
 
 
 
-# Does the module load
-END { ok( 0, 'Loads' ) unless $loaded; }
-use Class::Inspector;
-$loaded = 1;
-ok( 1, 'Loads' );
-
-
-
-
-
-
-
-
+#####################################################################
+# Begin Tests
 
 # Check the good/bad class code
-ok(   $ci->_class( $ci ), 'Class validator works for known valid' );
-ok(   $ci->_class( $bad ), 'Class validator works for correctly formatted, but not installed' );
-ok(   $ci->_class( 'A::B::C::D::E' ), 'Class validator works for long classes' );
-ok(   $ci->_class( '::' ), 'Class validator allows main' );
-ok(   $ci->_class( '::Blah' ), 'Class validator works for main aliased' );
-ok( ! $ci->_class(), 'Class validator failed for missing class' );
-ok( ! $ci->_class( '4teen' ), 'Class validator fails for number starting class' );
-ok( ! $ci->_class( 'Blah::%f' ), 'Class validator catches bad characters' );
+ok(   CI->_class( CI ),              'Class validator works for known valid' );
+ok(   CI->_class( BAD ),             'Class validator works for correctly formatted, but not installed' );
+ok(   CI->_class( 'A::B::C::D::E' ), 'Class validator works for long classes' );
+ok(   CI->_class( '::' ),            'Class validator allows main' );
+ok(   CI->_class( '::Blah' ),        'Class validator works for main aliased' );
+ok( ! CI->_class(),                  'Class validator failed for missing class' );
+ok( ! CI->_class( '4teen' ),         'Class validator fails for number starting class' );
+ok( ! CI->_class( 'Blah::%f' ),      'Class validator catches bad characters' );
 
 
 
@@ -78,68 +54,68 @@ ok( ! $ci->_class( 'Blah::%f' ), 'Class validator catches bad characters' );
 
 
 # Check the loaded method
-ok(   $ci->loaded( $ci ), "->loaded detects loaded" );
-ok( ! $ci->loaded( $bad ), "->loaded detects not loaded" );
+ok(   CI->loaded( CI ), "->loaded detects loaded" );
+ok( ! CI->loaded( BAD ), "->loaded detects not loaded" );
 
 
 
 
 
 # Check the file name methods
-my $filename = $ci->filename( $ci );
+my $filename = CI->filename( CI );
 ok( $filename eq File::Spec->catfile( "Class", "Inspector.pm" ), "->filename works correctly" );
-my $inc_filename = $ci->_inc_filename( $ci );
+my $inc_filename = CI->_inc_filename( CI );
 ok( $inc_filename eq "Class/Inspector.pm", "->_inc_filename works correctly" );
-ok( index( $ci->loaded_filename($ci), $filename ) >= 0, "->loaded_filename works" );
-ok( ($filename eq $inc_filename or index( $ci->loaded_filename($ci), $inc_filename ) == -1), "->loaded_filename works" );
-ok( index( $ci->resolved_filename($ci), $filename ) >= 0, "->resolved_filename works" );
-ok( ($filename eq $inc_filename or index( $ci->resolved_filename($ci), $inc_filename ) == -1), "->resolved_filename works" );
+ok( index( CI->loaded_filename(CI), $filename ) >= 0, "->loaded_filename works" );
+ok( ($filename eq $inc_filename or index( CI->loaded_filename(CI), $inc_filename ) == -1), "->loaded_filename works" );
+ok( index( CI->resolved_filename(CI), $filename ) >= 0, "->resolved_filename works" );
+ok( ($filename eq $inc_filename or index( CI->resolved_filename(CI), $inc_filename ) == -1), "->resolved_filename works" );
 
 
 
 
 
 # Check the installed stuff
-ok( $ci->installed( $ci ), "->installed detects installed" );
-ok( ! $ci->installed( $bad ), "->installed detects not installed" );
+ok( CI->installed( CI ), "->installed detects installed" );
+ok( ! CI->installed( BAD ), "->installed detects not installed" );
 
 
 
 
 
 # Check the functions
-my $functions = $ci->functions( $ci );
+my $functions = CI->functions( CI );
 ok( (isa( $functions, 'ARRAY' )
 	and $functions->[0] eq '_class'
 	and scalar @$functions == $base_functions),
 	"->functions works correctly" );
-ok( ! $ci->functions( $bad ), "->functions fails correctly" );
+ok( ! CI->functions( BAD ), "->functions fails correctly" );
 
 
 
 
 
 # Check function refs
-$functions = $ci->function_refs( $ci );
+$functions = CI->function_refs( CI );
 ok( (isa( $functions, 'ARRAY' )
 	and ref $functions->[0]
 	and isa( $functions->[0], 'CODE' )
 	and scalar @$functions == $base_functions),
 	"->function_refs works correctly" );
-ok( ! $ci->functions( $bad ), "->function_refs fails correctly" );
+ok( ! CI->functions( BAD ), "->function_refs fails correctly" );
 
 
 
 
 
 # Check function_exists
-ok( $ci->function_exists( $ci, 'installed' ),
+ok( CI->function_exists( CI, 'installed' ),
 	"->function_exists detects function that exists" );
-ok( ! $ci->function_exists( $ci, 'nsfladf' ),
+ok( ! CI->function_exists( CI, 'nsfladf' ),
 	"->function_exists fails for bad function" );
-ok( ! $ci->function_exists( $ci ),
+ok( ! CI->function_exists( CI ),
 	"->function_exists fails for missing function" );
-ok( ! $ci->function_exists( $bad, 'function' ),
+ok( ! CI->function_exists( BAD, 'function' ),
 	"->function_exists fails for bad class" );
 
 
@@ -161,65 +137,65 @@ sub installed { 1; }
 
 package main;
 
-my $methods = $ci->methods( $ci );
+my $methods = CI->methods( CI );
 ok( (isa( $methods, 'ARRAY' )
 	and $methods->[0] eq '_class'
 	and scalar @$methods == $base_functions),
 	"->methods works for non-inheriting class" );
-$methods = $ci->methods( 'Class::Inspector::Dummy' );
+$methods = CI->methods( 'Class::Inspector::Dummy' );
 ok( (isa( $methods, 'ARRAY' )
 	and $methods->[0] eq '_a_first'
 	and scalar @$methods == ($base_functions + 4)
 	and scalar( grep { /dummy/ } @$methods ) == 3),
 	"->methods works for inheriting class" );
-ok( ! $ci->methods( $bad ), "->methods fails correctly" );
+ok( ! CI->methods( BAD ), "->methods fails correctly" );
 
 # Check the variety of different possible ->methods options
 
 # Public option
-$methods = $ci->methods( $ci, 'public' );
+$methods = CI->methods( CI, 'public' );
 ok( (isa( $methods, 'ARRAY' )
 	and $methods->[0] eq 'children'
 	and scalar @$methods == $base_public),
 	"Public ->methods works for non-inheriting class" );
-$methods = $ci->methods( 'Class::Inspector::Dummy', 'public' );
+$methods = CI->methods( 'Class::Inspector::Dummy', 'public' );
 ok( (isa( $methods, 'ARRAY' )
 	and $methods->[0] eq 'adummy1'
 	and scalar @$methods == ($base_public + 2)
 	and scalar( grep { /dummy/ } @$methods ) == 2),
 	"Public ->methods works for inheriting class" );
-ok( ! $ci->methods( $bad ), "Public ->methods fails correctly" );
+ok( ! CI->methods( BAD ), "Public ->methods fails correctly" );
 
 # Private option
-$methods = $ci->methods( $ci, 'private' );
+$methods = CI->methods( CI, 'private' );
 ok( (isa( $methods, 'ARRAY' )
 	and $methods->[0] eq '_class'
-	and scalar @$methods == 3),
+	and scalar @$methods == $base_private),
 	"Private ->methods works for non-inheriting class" );
-$methods = $ci->methods( 'Class::Inspector::Dummy', 'private' );
+$methods = CI->methods( 'Class::Inspector::Dummy', 'private' );
 ok( (isa( $methods, 'ARRAY' )
 	and $methods->[0] eq '_a_first'
-	and scalar @$methods == 5
+	and scalar @$methods == ($base_private + 2)
 	and scalar( grep { /dummy/ } @$methods ) == 1),
 	"Private ->methods works for inheriting class" );
-ok( ! $ci->methods( $bad ), "Private ->methods fails correctly" );
+ok( ! CI->methods( BAD ), "Private ->methods fails correctly" );
 
 # Full option
-$methods = $ci->methods( $ci, 'full' );
+$methods = CI->methods( CI, 'full' );
 ok( (isa( $methods, 'ARRAY' )
 	and $methods->[0] eq 'Class::Inspector::_class'
 	and scalar @$methods == $base_functions),
 	"Full ->methods works for non-inheriting class" );
-$methods = $ci->methods( 'Class::Inspector::Dummy', 'full' );
+$methods = CI->methods( 'Class::Inspector::Dummy', 'full' );
 ok( (isa( $methods, 'ARRAY' )
 	and $methods->[0] eq 'Class::Inspector::Dummy::_a_first'
 	and scalar @$methods == ($base_functions + 4)
 	and scalar( grep { /dummy/ } @$methods ) == 3),
 	"Full ->methods works for inheriting class" );
-ok( ! $ci->methods( $bad ), "Full ->methods fails correctly" );
+ok( ! CI->methods( BAD ), "Full ->methods fails correctly" );
 
 # Expanded option
-$methods = $ci->methods( $ci, 'expanded' );
+$methods = CI->methods( CI, 'expanded' );
 ok( (isa( $methods, 'ARRAY' )
 	and isa( $methods->[0], 'ARRAY' )
 	and $methods->[0]->[0] eq 'Class::Inspector::_class'
@@ -228,7 +204,7 @@ ok( (isa( $methods, 'ARRAY' )
 	and isa( $methods->[0]->[3], 'CODE' )
 	and scalar @$methods == $base_functions),
 	"Expanded ->methods works for non-inheriting class" );
-$methods = $ci->methods( 'Class::Inspector::Dummy', 'expanded' );
+$methods = CI->methods( 'Class::Inspector::Dummy', 'expanded' );
 ok( (isa( $methods, 'ARRAY' )
 	and isa( $methods->[0], 'ARRAY' )
 	and $methods->[0]->[0] eq 'Class::Inspector::Dummy::_a_first'
@@ -238,16 +214,16 @@ ok( (isa( $methods, 'ARRAY' )
 	and scalar @$methods == ($base_functions + 4)
 	and scalar( grep { /dummy/ } map { $_->[2] } @$methods ) == 3),
 	"Expanded ->methods works for inheriting class" );
-ok( ! $ci->methods( $bad ), "Expanded ->methods fails correctly" );
+ok( ! CI->methods( BAD ), "Expanded ->methods fails correctly" );
 
 # Check clashing between options
-ok( ! $ci->methods( $ci, 'public', 'private' ), "Public and private ->methods clash correctly" );
-ok( ! $ci->methods( $ci, 'private', 'public' ), "Public and private ->methods clash correctly" );
-ok( ! $ci->methods( $ci, 'full', 'expanded' ), "Full and expanded ->methods class correctly" );
-ok( ! $ci->methods( $ci, 'expanded', 'full' ), "Full and expanded ->methods class correctly" );
+ok( ! CI->methods( CI, 'public', 'private' ), "Public and private ->methods clash correctly" );
+ok( ! CI->methods( CI, 'private', 'public' ), "Public and private ->methods clash correctly" );
+ok( ! CI->methods( CI, 'full', 'expanded' ), "Full and expanded ->methods class correctly" );
+ok( ! CI->methods( CI, 'expanded', 'full' ), "Full and expanded ->methods class correctly" );
 
 # Check combining options
-$methods = $ci->methods( $ci, 'public', 'expanded' );
+$methods = CI->methods( CI, 'public', 'expanded' );
 ok( (isa( $methods, 'ARRAY' )
 	and isa( $methods->[0], 'ARRAY' )
 	and $methods->[0]->[0] eq 'Class::Inspector::children'
@@ -256,7 +232,7 @@ ok( (isa( $methods, 'ARRAY' )
 	and isa( $methods->[0]->[3], 'CODE' )
 	and scalar @$methods == $base_public),
 	"Public + Expanded ->methods works for non-inheriting class" );
-$methods = $ci->methods( 'Class::Inspector::Dummy', 'public', 'expanded' );
+$methods = CI->methods( 'Class::Inspector::Dummy', 'public', 'expanded' );
 ok( (isa( $methods, 'ARRAY' )
 	and isa( $methods->[0], 'ARRAY' )
 	and $methods->[0]->[0] eq 'Class::Inspector::Dummy::adummy1'
@@ -266,7 +242,46 @@ ok( (isa( $methods, 'ARRAY' )
 	and scalar @$methods == ($base_public + 2)
 	and scalar( grep { /dummy/ } map { $_->[2] } @$methods ) == 2),
 	"Public + Expanded ->methods works for inheriting class" );
-ok( ! $ci->methods( $bad ), "Expanded ->methods fails correctly" );
+ok( ! CI->methods( BAD ), "Expanded ->methods fails correctly" );
+
+
+
+
+
+#####################################################################
+# Search Tests
+
+# Create the classes to use
+CLASSES: {
+	package Foo;
+	
+	sub foo { 1 };
+	
+	package Foo::Subclass;
+	
+	@Foo::Subclass::ISA = 'Foo';
+	
+	package Bar;
+	
+	@Bar::ISA = 'Foo';
+	
+	package This;
+	
+	sub isa { $_[1] eq 'Foo' ? 1 : undef }
+	
+	1;
+}
+
+# Check trivial ->find cases
+is( CI->find( '' ), undef, '->find(bad) returns undef'  );
+is( CI->find( BAD ), '',   '->find(none) returns false' );
+my $rv = CI->find( CI );
+is_deeply( $rv, [ CI, 'Class::Inspector::Dummy' ], '->find(CI) returns just itself' );
+
+# Check non-trivial ->find cases
+$rv = CI->find( 'Foo' );
+is_deeply( $rv, [ 'Bar', 'Foo', 'Foo::Subclass', 'This' ],
+	'->find(nontrivial) returns the expected class list' );
 
 
 
