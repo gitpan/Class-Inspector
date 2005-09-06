@@ -1,12 +1,15 @@
-# http://module-build.sourceforge.net/META-spec.html
-#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
-name:         Class-Inspector
-version:      1.10
-version_from: lib/Class/Inspector.pm
-installdirs:  site
-requires:
-    File::Spec:                    0.82
-    Test::More:                    0.47
-
+name: Class-Inspector
+version: 1.11
+abstract: Get information about a class and its structure
+author: Adam Kennedy <cpan@ali.as>
+license: unknown
 distribution_type: module
-generated_by: ExtUtils::MakeMaker version 6.17
+build_requires:
+  Test::More: 0.47
+requires:
+  perl: 5.005
+  File::Spec: 0.80
+no_index:
+  directory:
+    - inc
+generated_by: Module::Install version 0.37

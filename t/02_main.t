@@ -273,15 +273,15 @@ CLASSES: {
 }
 
 # Check trivial ->find cases
-is( CI->find( '' ), undef, '->find(bad) returns undef'  );
-is( CI->find( BAD ), '',   '->find(none) returns false' );
-my $rv = CI->find( CI );
-is_deeply( $rv, [ CI, 'Class::Inspector::Dummy' ], '->find(CI) returns just itself' );
+is( CI->subclasses( '' ), undef, '->subclasses(bad) returns undef'  );
+is( CI->subclasses( BAD ), '',   '->subclasses(none) returns false' );
+my $rv = CI->subclasses( CI );
+is_deeply( $rv, [ 'Class::Inspector::Dummy' ], '->subclasses(CI) returns just itself' );
 
-# Check non-trivial ->find cases
-$rv = CI->find( 'Foo' );
-is_deeply( $rv, [ 'Bar', 'Foo', 'Foo::Subclass', 'This' ],
-	'->find(nontrivial) returns the expected class list' );
+# Check non-trivial ->subclasses cases
+$rv = CI->subclasses( 'Foo' );
+is_deeply( $rv, [ 'Bar', 'Foo::Subclass', 'This' ],
+	'->subclasses(nontrivial) returns the expected class list' );
 
 
 

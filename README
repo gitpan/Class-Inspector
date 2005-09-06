@@ -173,10 +173,10 @@ METHODS
             [ 'Foo::bar',         'Foo',     'bar',     \&Foo::bar         ],
           ]
 
-  find $class
-    The "find" static method will search then entire namespace (and thus all
-    currently loaded classes) to find all classes that are of the type
-    provided as a the parameter.
+  subclasses $class
+    The "subclasses" static method will search then entire namespace (and
+    thus all currently loaded classes) to find all classes that are
+    subclasses of the class provided as a the parameter.
 
     The actual test will be done by calling "isa" on the class as a static
     method. (i.e. "My::Class->isa($class)".

@@ -49,7 +49,7 @@ use File::Spec ();
 # Globals
 use vars qw{$VERSION $RE_IDENT $RE_CLASS $UNIX};
 BEGIN {
-	$VERSION = '1.10';
+	$VERSION = '1.11';
 
 	# Predefine some regexs
 	$RE_IDENT = qr/\A[^\W\d]\w*\z/s;
@@ -451,11 +451,11 @@ sub methods {
 
 =pod
 
-=head2 find $class
+=head2 subclasses $class
 
-The C<find> static method will search then entire namespace (and thus
-B<all> currently loaded classes) to find all classes that are of the
-type provided as a the parameter.
+The C<subclasses> static method will search then entire namespace (and thus
+B<all> currently loaded classes) to find all classes that are subclasses
+of the class provided as a the parameter.
 
 The actual test will be done by calling C<isa> on the class as a static
 method. (i.e. C<My::Class-E<gt>isa($class)>.
@@ -466,29 +466,30 @@ is invalid.
 
 =cut
 
-sub find {
+sub subclasses {
 	my $class = shift;
 	my $name  = $class->_class( shift ) or return undef;
 
 	# Prepare the search queue
 	my @found = ();
-	my @queue = grep { $_ ne 'main' } $class->_find_children('');
+	my @queue = grep { $_ ne 'main' } $class->_subnames('');
 	while ( @queue ) {
 		my $c = shift(@queue); # c for class
 		if ( $class->_loaded($c) and $c->isa($name) ) {
-			push @found, $c;
+			# Add to the found list, but don't add the class itself
+			push @found, $c unless $c eq $name;
 		}
 
 		# Add any child namespaces to the head of the queue.
 		# This keeps the queue length shorted, and allows us
 		# not to have to do another sort at the end.
-		unshift @queue, map { "${c}::$_" } $class->_find_children($c);
+		unshift @queue, map { "${c}::$_" } $class->_subnames($c);
 	}
 
 	@found ? \@found : '';
 }
 
-sub _find_children {
+sub _subnames {
 	my ($class, $name) = @_;
 	return sort
 		grep {

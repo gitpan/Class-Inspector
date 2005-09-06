@@ -1,5 +1,12 @@
 Revision history for Perl extension Class::Inspector.
 
+1.11 Tue Sep  6 2005
+	- It occured to me after I added ->find that what it _really_ is
+	  is a way to find all the subclasses, but then include the class
+	  itself in the returned list. This method makes much more sense
+	  it I don't return the class itself, and rename it ->subclasses
+	- Fixed broken Makefile.PL
+
 1.10 Mon Sep  5 2005
 	- Added the ->find method
 	- Cleaned up and reorganised the POD
