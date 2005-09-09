@@ -17,7 +17,7 @@ BEGIN {
 	}
 }
 
-use Test::More tests => 53;
+use Test::More tests => 54;
 use Class::Inspector ();
 
 # To make maintaining this a little faster,
@@ -273,15 +273,17 @@ CLASSES: {
 }
 
 # Check trivial ->find cases
-is( CI->subclasses( '' ), undef, '->subclasses(bad) returns undef'  );
-is( CI->subclasses( BAD ), '',   '->subclasses(none) returns false' );
-my $rv = CI->subclasses( CI );
-is_deeply( $rv, [ 'Class::Inspector::Dummy' ], '->subclasses(CI) returns just itself' );
+{
+	is( CI->subclasses( '' ), undef, '->subclasses(bad) returns undef'  );
+	is( CI->subclasses( BAD ), '',   '->subclasses(none) returns false' );
+	my $rv = CI->subclasses( CI );
+	is_deeply( $rv, [ 'Class::Inspector::Dummy' ], '->subclasses(CI) returns just itself' );
 
-# Check non-trivial ->subclasses cases
-$rv = CI->subclasses( 'Foo' );
-is_deeply( $rv, [ 'Bar', 'Foo::Subclass', 'This' ],
-	'->subclasses(nontrivial) returns the expected class list' );
+	# Check non-trivial ->subclasses cases
+	$rv = CI->subclasses( 'Foo' );
+	is_deeply( $rv, [ 'Bar', 'Foo::Subclass', 'This' ],
+		'->subclasses(nontrivial) returns the expected class list' );
+}
 
 
 
@@ -296,5 +298,31 @@ is_deeply( $rv, [ 'Bar', 'Foo::Subclass', 'This' ],
 # An empty namespace with a single spurious empty glob entry (although
 # created in this test with a scalar) should return FALSE for ->loaded
 $Class::Inspector::SpuriousPackage::something = 1;
+$Class::Inspector::SpuriousPackage::something = 1; # Avoid a warning
 ok( ! Class::Inspector->loaded('Class::Inspector::SpuriousPackage'),
 	'->loaded returns false for spurious glob in package' );
+
+
+
+# Discovered in 1.11, fixed in 1.12
+# With the introduction of ->subclasses, we exposed ourselves to
+# non-local problems with ->isa method implementations.
+PACKAGES: {
+	# The busted package
+	package Class::Inspector::BrokenISA;
+	use vars qw{&isa $VERSION};
+	$VERSION = '0.01';
+	# The test packages
+	package My::Foo;
+	use vars qw{$VERSION};
+	$VERSION = '0.01';
+	package My::Bar;
+	use vars qw{$VERSION @ISA};
+	$VERSION = '0.01';
+	@ISA     = 'My::Foo';
+}
+TESTS: {
+	my $rv = Class::Inspector->subclasses( 'My::Foo' );
+	is_deeply( $rv, [ 'My::Bar' ],
+		'->subclasses in the presence of an evil ->isa does not crash' );
+}

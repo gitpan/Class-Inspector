@@ -1,5 +1,9 @@
 Revision history for Perl extension Class::Inspector.
 
+1.12 Fri Sep  9 2005
+	- Added a fix for classes with insanely broken ->isa methods
+	  that cause Perl to die.
+
 1.11 Tue Sep  6 2005
 	- It occured to me after I added ->find that what it _really_ is
 	  is a way to find all the subclasses, but then include the class

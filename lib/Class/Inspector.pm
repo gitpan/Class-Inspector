@@ -43,13 +43,14 @@ an easier, more friendly interface to this information.
 
 # We don't want to use strict refs, since we do a lot of things in here
 # that arn't strict refs friendly.
-use strict 'vars', 'subs';
+use strict     'vars',
+               'subs';
 use File::Spec ();
 
 # Globals
 use vars qw{$VERSION $RE_IDENT $RE_CLASS $UNIX};
 BEGIN {
-	$VERSION = '1.11';
+	$VERSION = '1.12';
 
 	# Predefine some regexs
 	$RE_IDENT = qr/\A[^\W\d]\w*\z/s;
@@ -475,9 +476,19 @@ sub subclasses {
 	my @queue = grep { $_ ne 'main' } $class->_subnames('');
 	while ( @queue ) {
 		my $c = shift(@queue); # c for class
-		if ( $class->_loaded($c) and $c->isa($name) ) {
-			# Add to the found list, but don't add the class itself
-			push @found, $c unless $c eq $name;
+		if ( $class->_loaded($c) ) {
+			# At least one person has managed to misengineer
+			# a situation in which ->isa could die, even if the
+			# class is real. Trap these cases and just skip
+			# over that (bizarre) class. That would at limit
+			# problems with finding subclasses to only the
+			# modules that have broken ->isa implementation.
+			eval {
+				if ( $c->isa($name) ) {
+					# Add to the found list, but don't add the class itself
+					push @found, $c unless $c eq $name;
+				}
+			};
 		}
 
 		# Add any child namespaces to the head of the queue.
