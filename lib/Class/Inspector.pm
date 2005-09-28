@@ -24,8 +24,8 @@ Class::Inspector - Get information about a class and its structure
   Class::Inspector->function_exists( 'Foo::Class', 'bar' );
   Class::Inspector->methods( 'Foo::Class', 'full', 'public' );
   
-  # Find all loaded classes that are something
-  Class::Inspector->find( 'Foo::Class' );
+  # Find all loaded subclasses or something
+  Class::Inspector->subclasses( 'Foo::Class' );
 
 =head1 DESCRIPTION
 
@@ -43,14 +43,13 @@ an easier, more friendly interface to this information.
 
 # We don't want to use strict refs, since we do a lot of things in here
 # that arn't strict refs friendly.
-use strict     'vars',
-               'subs';
+use strict     qw{vars subs};
 use File::Spec ();
 
 # Globals
 use vars qw{$VERSION $RE_IDENT $RE_CLASS $UNIX};
 BEGIN {
-	$VERSION = '1.12';
+	$VERSION = '1.13';
 
 	# Predefine some regexs
 	$RE_IDENT = qr/\A[^\W\d]\w*\z/s;

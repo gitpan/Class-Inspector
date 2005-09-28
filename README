@@ -18,8 +18,8 @@ SYNOPSIS
       Class::Inspector->function_exists( 'Foo::Class', 'bar' );
       Class::Inspector->methods( 'Foo::Class', 'full', 'public' );
   
-      # Find all loaded classes that are something
-      Class::Inspector->find( 'Foo::Class' );
+      # Find all loaded subclasses or something
+      Class::Inspector->subclasses( 'Foo::Class' );
 
 DESCRIPTION
     Class::Inspector allows you to get information about a loaded class.

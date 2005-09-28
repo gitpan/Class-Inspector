@@ -1,5 +1,8 @@
 Revision history for Perl extension Class::Inspector.
 
+1.13 Wed Sep 28 2005
+	- Fixed a minor POD bug in the synopsis
+
 1.12 Fri Sep  9 2005
 	- Added a fix for classes with insanely broken ->isa methods
 	  that cause Perl to die.
