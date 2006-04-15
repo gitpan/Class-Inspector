@@ -41,6 +41,7 @@ an easier, more friendly interface to this information.
 
 # Load Overhead: 236k
 
+use 5.005;
 # We don't want to use strict refs, since we do a lot of things in here
 # that arn't strict refs friendly.
 use strict     qw{vars subs};
@@ -49,7 +50,7 @@ use File::Spec ();
 # Globals
 use vars qw{$VERSION $RE_IDENT $RE_CLASS $UNIX};
 BEGIN {
-	$VERSION = '1.13';
+	$VERSION = '1.14';
 
 	# Predefine some regexs
 	$RE_IDENT = qr/\A[^\W\d]\w*\z/s;
@@ -611,15 +612,15 @@ For other issues, or commercial enhancement or support, contact the author.
 
 =head1 AUTHOR
 
-Adam Kennedy, L<http://ali.as/>, cpan@ali.as
+Adam Kennedy E<lt>cpan@ali.asE<gt>
 
 =head1 SEE ALSO
 
-L<Class::Handle>, which wraps this one
+L<http://ali.as/>, L<Class::Handle>
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002 - 2004 Adam Kennedy. All rights reserved.
+Copyright (c) 2002 - 2006 Adam Kennedy. All rights reserved.
 
 This program is free software; you can redistribute
 it and/or modify it under the same terms as Perl itself.

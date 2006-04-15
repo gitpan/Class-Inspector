@@ -4,16 +4,21 @@
 
 # Do all the tests on ourself, since we know we will be loaded.
 
+
 use strict;
 use lib ();
-use UNIVERSAL 'isa';
 use File::Spec::Functions ':ALL';
 BEGIN {
 	$| = 1;
 	unless ( $ENV{HARNESS_ACTIVE} ) {
 		require FindBin;
-		chdir ($FindBin::Bin = $FindBin::Bin); # Avoid a warning
-		lib->import( catdir( updir(), updir(), 'modules') );
+		$FindBin::Bin = $FindBin::Bin; # Avoid a warning
+		chdir catdir( $FindBin::Bin, updir() );
+		lib->import(
+			catdir('blib', 'arch'),
+			catdir('blib', 'lib' ),
+			catdir('lib'),
+			);
 	}
 }
 
@@ -85,7 +90,7 @@ ok( ! CI->installed( BAD ), "->installed detects not installed" );
 
 # Check the functions
 my $functions = CI->functions( CI );
-ok( (isa( $functions, 'ARRAY' )
+ok( (ref($functions) eq 'ARRAY'
 	and $functions->[0] eq '_class'
 	and scalar @$functions == $base_functions),
 	"->functions works correctly" );
@@ -97,9 +102,9 @@ ok( ! CI->functions( BAD ), "->functions fails correctly" );
 
 # Check function refs
 $functions = CI->function_refs( CI );
-ok( (isa( $functions, 'ARRAY' )
+ok( (ref($functions) eq 'ARRAY'
 	and ref $functions->[0]
-	and isa( $functions->[0], 'CODE' )
+	and ref($functions->[0]) eq 'CODE'
 	and scalar @$functions == $base_functions),
 	"->function_refs works correctly" );
 ok( ! CI->functions( BAD ), "->function_refs fails correctly" );
@@ -138,12 +143,12 @@ sub installed { 1; }
 package main;
 
 my $methods = CI->methods( CI );
-ok( (isa( $methods, 'ARRAY' )
+ok( ( ref($methods) eq 'ARRAY'
 	and $methods->[0] eq '_class'
 	and scalar @$methods == $base_functions),
 	"->methods works for non-inheriting class" );
 $methods = CI->methods( 'Class::Inspector::Dummy' );
-ok( (isa( $methods, 'ARRAY' )
+ok( (ref($methods) eq 'ARRAY'
 	and $methods->[0] eq '_a_first'
 	and scalar @$methods == ($base_functions + 4)
 	and scalar( grep { /dummy/ } @$methods ) == 3),
@@ -154,12 +159,12 @@ ok( ! CI->methods( BAD ), "->methods fails correctly" );
 
 # Public option
 $methods = CI->methods( CI, 'public' );
-ok( (isa( $methods, 'ARRAY' )
+ok( (ref($methods) eq 'ARRAY'
 	and $methods->[0] eq 'children'
 	and scalar @$methods == $base_public),
 	"Public ->methods works for non-inheriting class" );
 $methods = CI->methods( 'Class::Inspector::Dummy', 'public' );
-ok( (isa( $methods, 'ARRAY' )
+ok( (ref($methods) eq 'ARRAY'
 	and $methods->[0] eq 'adummy1'
 	and scalar @$methods == ($base_public + 2)
 	and scalar( grep { /dummy/ } @$methods ) == 2),
@@ -168,12 +173,12 @@ ok( ! CI->methods( BAD ), "Public ->methods fails correctly" );
 
 # Private option
 $methods = CI->methods( CI, 'private' );
-ok( (isa( $methods, 'ARRAY' )
+ok( (ref($methods) eq 'ARRAY'
 	and $methods->[0] eq '_class'
 	and scalar @$methods == $base_private),
 	"Private ->methods works for non-inheriting class" );
 $methods = CI->methods( 'Class::Inspector::Dummy', 'private' );
-ok( (isa( $methods, 'ARRAY' )
+ok( (ref($methods) eq 'ARRAY'
 	and $methods->[0] eq '_a_first'
 	and scalar @$methods == ($base_private + 2)
 	and scalar( grep { /dummy/ } @$methods ) == 1),
@@ -182,12 +187,12 @@ ok( ! CI->methods( BAD ), "Private ->methods fails correctly" );
 
 # Full option
 $methods = CI->methods( CI, 'full' );
-ok( (isa( $methods, 'ARRAY' )
+ok( (ref($methods) eq 'ARRAY'
 	and $methods->[0] eq 'Class::Inspector::_class'
 	and scalar @$methods == $base_functions),
 	"Full ->methods works for non-inheriting class" );
 $methods = CI->methods( 'Class::Inspector::Dummy', 'full' );
-ok( (isa( $methods, 'ARRAY' )
+ok( (ref($methods) eq 'ARRAY'
 	and $methods->[0] eq 'Class::Inspector::Dummy::_a_first'
 	and scalar @$methods == ($base_functions + 4)
 	and scalar( grep { /dummy/ } @$methods ) == 3),
@@ -196,21 +201,21 @@ ok( ! CI->methods( BAD ), "Full ->methods fails correctly" );
 
 # Expanded option
 $methods = CI->methods( CI, 'expanded' );
-ok( (isa( $methods, 'ARRAY' )
-	and isa( $methods->[0], 'ARRAY' )
+ok( (ref($methods) eq 'ARRAY'
+	and ref($methods->[0]) eq 'ARRAY'
 	and $methods->[0]->[0] eq 'Class::Inspector::_class'
 	and $methods->[0]->[1] eq 'Class::Inspector'
 	and $methods->[0]->[2] eq '_class'
-	and isa( $methods->[0]->[3], 'CODE' )
+	and ref($methods->[0]->[3]) eq 'CODE'
 	and scalar @$methods == $base_functions),
 	"Expanded ->methods works for non-inheriting class" );
 $methods = CI->methods( 'Class::Inspector::Dummy', 'expanded' );
-ok( (isa( $methods, 'ARRAY' )
-	and isa( $methods->[0], 'ARRAY' )
+ok( (ref($methods) eq 'ARRAY'
+	and ref($methods->[0]) eq 'ARRAY'
 	and $methods->[0]->[0] eq 'Class::Inspector::Dummy::_a_first'
 	and $methods->[0]->[1] eq 'Class::Inspector::Dummy'
 	and $methods->[0]->[2] eq '_a_first'
-	and isa( $methods->[0]->[3], 'CODE' )
+	and ref($methods->[0]->[3]) eq 'CODE'
 	and scalar @$methods == ($base_functions + 4)
 	and scalar( grep { /dummy/ } map { $_->[2] } @$methods ) == 3),
 	"Expanded ->methods works for inheriting class" );
@@ -224,21 +229,21 @@ ok( ! CI->methods( CI, 'expanded', 'full' ), "Full and expanded ->methods class 
 
 # Check combining options
 $methods = CI->methods( CI, 'public', 'expanded' );
-ok( (isa( $methods, 'ARRAY' )
-	and isa( $methods->[0], 'ARRAY' )
+ok( (ref($methods) eq 'ARRAY'
+	and ref($methods->[0]) eq 'ARRAY'
 	and $methods->[0]->[0] eq 'Class::Inspector::children'
 	and $methods->[0]->[1] eq 'Class::Inspector'
 	and $methods->[0]->[2] eq 'children'
-	and isa( $methods->[0]->[3], 'CODE' )
+	and ref($methods->[0]->[3]) eq 'CODE'
 	and scalar @$methods == $base_public),
 	"Public + Expanded ->methods works for non-inheriting class" );
 $methods = CI->methods( 'Class::Inspector::Dummy', 'public', 'expanded' );
-ok( (isa( $methods, 'ARRAY' )
-	and isa( $methods->[0], 'ARRAY' )
+ok( (ref($methods) eq 'ARRAY'
+	and ref($methods->[0]) eq 'ARRAY'
 	and $methods->[0]->[0] eq 'Class::Inspector::Dummy::adummy1'
 	and $methods->[0]->[1] eq 'Class::Inspector::Dummy'
 	and $methods->[0]->[2] eq 'adummy1'
-	and isa( $methods->[0]->[3], 'CODE' )
+	and ref($methods->[0]->[3]) eq 'CODE'
 	and scalar @$methods == ($base_public + 2)
 	and scalar( grep { /dummy/ } map { $_->[2] } @$methods ) == 2),
 	"Public + Expanded ->methods works for inheriting class" );
