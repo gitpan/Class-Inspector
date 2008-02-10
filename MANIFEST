@@ -1,3 +1,6 @@
+97_meta.t
+98_pod.t
+99_pmv.t
 Changes
 inc/Module/Install.pm
 inc/Module/Install/Base.pm
@@ -15,5 +18,4 @@ META.yml
 README
 t/01_compile.t
 t/02_main.t
-t/98_pod.t
-t/99_pmv.t
+t/03_inc_to_local.t

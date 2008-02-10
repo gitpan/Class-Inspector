@@ -40,22 +40,22 @@ an easier, more friendly interface to this information.
 =cut
 
 use 5.005;
-# We don't want to use strict refs, since we do a lot of things in here
-# that arn't strict refs friendly.
+# We don't want to use strict refs anywhere in this module, since we do a
+# lot of things in here that arn't strict refs friendly.
 use strict qw{vars subs};
 use File::Spec ();
 
 # Globals
-use vars qw{$VERSION $RE_IDENT $RE_CLASS $UNIX};
+use vars qw{$VERSION $RE_IDENTIFIER $RE_CLASS $UNIX};
 BEGIN {
-	$VERSION = '1.18';
+	$VERSION = '1.19_01';
 
 	# Predefine some regexs
-	$RE_IDENT = qr/\A[^\W\d]\w*\z/s;
-	$RE_CLASS = qr/\A[^\W\d]\w*(?:(?:'|::)\w+)*\z/s;
+	$RE_IDENTIFIER = qr/\A[^\W\d]\w*\z/s;
+	$RE_CLASS      = qr/\A[^\W\d]\w*(?:(?:\'|::)\w+)*\z/s;
 
 	# Are we on something Unix-like?
-	$UNIX = !! ( $File::Spec::ISA[0] eq 'File::Spec::Unix' );
+	$UNIX  = !! ( $File::Spec::ISA[0] eq 'File::Spec::Unix'  );
 }
 
 
@@ -151,7 +151,7 @@ Returns the filename on success or C<undef> if the class name is invalid.
 sub filename {
 	my $class = shift;
 	my $name  = $class->_class(shift) or return undef;
-	File::Spec->catfile( split /(?:'|::)/, $name ) . '.pm';
+	File::Spec->catfile( split /(?:\'|::)/, $name ) . '.pm';
 }
 
 =pod
@@ -236,7 +236,7 @@ sub functions {
 	return undef unless $class->loaded( $name );
 
 	# Get all the CODE symbol table entries
-	my @functions = sort grep { /$RE_IDENT/o }
+	my @functions = sort grep { /$RE_IDENTIFIER/o }
 		grep { defined &{"${name}::$_"} }
 		keys %{"${name}::"};
 	\@functions;
@@ -264,7 +264,7 @@ sub function_refs {
 	# Get all the CODE symbol table entries, but return
 	# the actual CODE refs this time.
 	my @functions = map { \&{"${name}::$_"} }
-		sort grep { /$RE_IDENT/o }
+		sort grep { /$RE_IDENTIFIER/o }
 		grep { defined &{"${name}::$_"} }
 		keys %{"${name}::"};
 	\@functions;
@@ -419,7 +419,7 @@ sub methods {
 	my %methods = ();
 	foreach my $namespace ( @path ) {
 		my @functions = grep { ! $methods{$_} }
-			grep { /$RE_IDENT/o }
+			grep { /$RE_IDENTIFIER/o }
 			grep { defined &{"${namespace}::$_"} } 
 			keys %{"${namespace}::"};
 		foreach ( @functions ) {
@@ -504,7 +504,7 @@ sub _subnames {
 		grep {
 			substr($_, -2, 2, '') eq '::'
 			and
-			/$RE_IDENT/o
+			/$RE_IDENTIFIER/o
 		}
 		keys %{"${name}::"};
 }
@@ -575,20 +575,22 @@ sub _class {
 sub _inc_filename {
 	my $class = shift;
 	my $name  = $class->_class(shift) or return undef;
-	join( '/', split /(?:'|::)/, $name ) . '.pm';
+	join( '/', split /(?:\'|::)/, $name ) . '.pm';
 }
 
 # Convert INC-specific file name to local file name
 sub _inc_to_local {
-	my $class = shift;
-
 	# Shortcut in the Unix case
-	return $_[0] if $UNIX;
+	return $_[1] if $UNIX;
 
-	# Get the INC filename and convert
-	my $inc_name = shift or return undef;
-	my ($vol, $dir, $file) = File::Spec::Unix->splitpath( $inc_name );
-	$dir = File::Spec->catdir( File::Spec::Unix->splitdir( $dir || "" ) );
+	# On other places, we have to deal with an unusual path that might look
+	# like C:/foo/bar.pm which doesn't fit ANY normal pattern.
+	# Putting it through splitpath/dir and back again seems to normalise
+	# it to a reasonable amount.
+	my $class              = shift;
+	my $inc_name           = shift or return undef;
+	my ($vol, $dir, $file) = File::Spec->splitpath( $inc_name );
+	$dir = File::Spec->catdir( File::Spec->splitdir( $dir || "" ) );
 	File::Spec->catpath( $vol, $dir, $file || "" );
 }
 
