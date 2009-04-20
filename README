@@ -3,28 +3,28 @@ NAME
 
 SYNOPSIS
       use Class::Inspector;
-  
-      # Is a class installed and/or loaded
+      
+  # Is a class installed and/or loaded
       Class::Inspector->installed( 'Foo::Class' );
       Class::Inspector->loaded( 'Foo::Class' );
-  
-      # Filename related information
+      
+  # Filename related information
       Class::Inspector->filename( 'Foo::Class' );
       Class::Inspector->resolved_filename( 'Foo::Class' );
-  
-      # Get subroutine related information
+      
+  # Get subroutine related information
       Class::Inspector->functions( 'Foo::Class' );
       Class::Inspector->function_refs( 'Foo::Class' );
       Class::Inspector->function_exists( 'Foo::Class', 'bar' );
       Class::Inspector->methods( 'Foo::Class', 'full', 'public' );
-  
-      # Find all loaded subclasses or something
+      
+  # Find all loaded subclasses or something
       Class::Inspector->subclasses( 'Foo::Class' );
 
 DESCRIPTION
     Class::Inspector allows you to get information about a loaded class.
     Most or all of this information can be found in other ways, but they
-    arn't always very friendly, and usually involve a relatively high level
+    aren't always very friendly, and usually involve a relatively high level
     of Perl wizardry, or strange and unusual looking code. Class::Inspector
     attempts to provide an easier, more friendly interface to this
     information.
@@ -185,9 +185,6 @@ METHODS
     provided, or false is none match, or "undef" if the class name provided
     is invalid.
 
-TO DO
-    - Adding Class::Inspector::Functions
-
 SUPPORT
     Bugs should be reported via the CPAN bug tracker
 
@@ -203,7 +200,7 @@ SEE ALSO
     <http://ali.as/>, Class::Handle
 
 COPYRIGHT
-    Copyright 2002 - 2008 Adam Kennedy.
+    Copyright 2002 - 2009 Adam Kennedy.
 
     This program is free software; you can redistribute it and/or modify it
     under the same terms as Perl itself.
