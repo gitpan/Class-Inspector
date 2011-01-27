@@ -4,14 +4,11 @@ package Module::Install::DSL;
 use strict;
 use vars qw{$VERSION $ISCORE};
 BEGIN {
-	$VERSION = '0.85';
+	$VERSION = '1.00';
 	$ISCORE  = 1;
 	*inc::Module::Install::DSL::VERSION = *VERSION;
 	@inc::Module::Install::DSL::ISA     = __PACKAGE__;
 }
-
-# Load the main Module::Install as usual.
-# require Module::Install;
 
 sub import {
 	# Read in the rest of the Makefile.PL
@@ -42,13 +39,15 @@ sub import {
 	}
 
 	# Convert the basic syntax to code
-	my $code = "package main;\n\n"
+	my $code = "INIT {\n"
+	         . "package main;\n\n"
 	         . dsl2code($dsl)
-	         . "\n\nWriteAll();\n";
+	         . "\n\nWriteAll();\n"
+	         . "}\n";
 
 	# Execute the script
 	eval $code;
-	print STDERR "Failed to execute the generated code" if $@;
+	print STDERR "Failed to execute the generated code...\n$@" if $@;
 
 	exit(0);
 }
