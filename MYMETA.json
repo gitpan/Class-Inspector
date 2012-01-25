@@ -39,7 +39,7 @@
          }
       }
    },
-   "release_status" : "testing",
+   "release_status" : "stable",
    "resources" : {
       "license" : [
          "http://dev.perl.org/licenses/"
@@ -49,6 +49,6 @@
       },
       "x_ChangeLog" : "http://fisheye2.atlassian.com/changelog/cpan/trunk/Class-Inspector"
    },
-   "version" : "1.26_01",
+   "version" : "1.27",
    "x_module_name" : "Class::Inspector"
 }

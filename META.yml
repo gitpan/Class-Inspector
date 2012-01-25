@@ -28,4 +28,4 @@ resources:
   ChangeLog: http://fisheye2.atlassian.com/changelog/cpan/trunk/Class-Inspector
   license: http://dev.perl.org/licenses/
   repository: http://svn.ali.as/cpan/trunk/Class-Inspector
-version: 1.26_01
+version: 1.27
